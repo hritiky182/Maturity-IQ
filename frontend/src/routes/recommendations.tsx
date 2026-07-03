@@ -1,28 +1,50 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
-import { priorityColor } from "@/lib/scoring";
+import { priorityColor, getAssessmentDepartments } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
 import { Sparkles, Clock, Building2, TrendingUp, Search } from "lucide-react";
 import { toast } from "sonner";
 
 export default function RecommendationsPage() {
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
   const recommendations = useStore((state) => state.recommendations);
   const assessments = useStore((state) => state.assessments);
   const regenerateRecommendations = useStore((state) => state.regenerateRecommendations);
 
-  const activeAsm = assessments.find((a) => a.status === "Completed") || assessments.find((a) => a.status === "In Progress") || assessments[0];
+  const userRole = localStorage.getItem("userRole") || currentUser?.role;
+
+  const activeOrg = useMemo(() => {
+    const matched = organizations.find((o) => o.id === currentUser?.organizationId);
+    return matched || organizations[0];
+  }, [organizations, currentUser]);
+
+  const scopeAssessments = useMemo(() => {
+    if (userRole === "Admin") return assessments;
+    return assessments.filter((a) => a.company.toLowerCase() === activeOrg.name.toLowerCase());
+  }, [assessments, activeOrg, userRole]);
+
+  const activeAsm = useMemo(() => {
+    return scopeAssessments.find((a) => a.status === "Completed") || scopeAssessments.find((a) => a.status === "In Progress") || scopeAssessments[0];
+  }, [scopeAssessments]);
 
   const [q, setQ] = useState("");
   const [pri, setPri] = useState<string>("all");
 
-  const rows = recommendations.filter((r) => {
-    if (pri !== "all" && r.priority !== pri) return false;
-    if (q && !`${r.title} ${r.department}`.toLowerCase().includes(q.toLowerCase())) return false;
-    return true;
-  });
+  const rows = useMemo(() => {
+    const activeDeps = activeAsm ? getAssessmentDepartments(activeAsm.id) : [];
+    const activeDepNames = activeDeps.map((d) => d.name.toLowerCase());
+
+    return recommendations.filter((r) => {
+      if (userRole !== "Admin" && !activeDepNames.includes(r.department.toLowerCase())) return false;
+      if (pri !== "all" && r.priority !== pri) return false;
+      if (q && !`${r.title} ${r.department}`.toLowerCase().includes(q.toLowerCase())) return false;
+      return true;
+    });
+  }, [recommendations, activeAsm, userRole, pri, q]);
 
   const handleRegenerate = () => {
     if (activeAsm) {

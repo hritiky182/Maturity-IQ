@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, useMemo } from "react";
 import { Bell, Search, Sun, Moon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useStore } from "@/lib/store";
 
 interface Props {
   title: string;
@@ -12,6 +13,17 @@ interface Props {
 
 export function PageShell({ title, description, actions, children }: Props) {
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
+  const userRole = localStorage.getItem("userRole") || currentUser?.role;
+
+  const orgDisplay = useMemo(() => {
+    if (userRole === "Admin") {
+      return "Global Console";
+    }
+    const matched = organizations.find((o) => o.id === currentUser?.organizationId);
+    return matched ? `${matched.name} · FY ${matched.assessmentYear || 2026}` : "Emaar Holdings · FY 2026";
+  }, [organizations, currentUser, userRole]);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -58,7 +70,7 @@ export function PageShell({ title, description, actions, children }: Props) {
             <div className="h-6 w-px bg-border" />
             
             <div className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">Emaar Holdings</span> · FY 2026
+              <span className="font-semibold text-foreground">{orgDisplay}</span>
             </div>
           </div>
         </div>

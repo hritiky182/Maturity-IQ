@@ -9,8 +9,9 @@ export default function RootLayout() {
   const navigate = useNavigate();
   const pathname = location.pathname;
 
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-  const userRole = localStorage.getItem("userRole");
+  const currentUser = useStore((state) => state.currentUser);
+  const isLoggedIn = currentUser !== null || localStorage.getItem("isLoggedIn") === "true";
+  const userRole = currentUser?.role || localStorage.getItem("userRole");
 
   const isPublicRoute = ["/login", "/register", "/forgot-password"].includes(pathname);
 

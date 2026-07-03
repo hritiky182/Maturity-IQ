@@ -18,17 +18,31 @@ const REPORTS = [
 ];
 
 export default function ReportsPage() {
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
   const assessments = useStore((state) => state.assessments);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const userRole = localStorage.getItem("userRole") || currentUser?.role;
+
+  const activeOrg = useMemo(() => {
+    const matched = organizations.find((o) => o.id === currentUser?.organizationId);
+    return matched || organizations[0];
+  }, [organizations, currentUser]);
+
+  const scopeAssessments = useMemo(() => {
+    if (userRole === "Admin") return assessments;
+    return assessments.filter((a) => a.company.toLowerCase() === activeOrg.name.toLowerCase());
+  }, [assessments, activeOrg, userRole]);
   
   // Resolve active assessment ID (from query param, then store's active, then first assessment)
   const assessmentId = useMemo(() => {
-    return searchParams.get("assessmentId") || useStore.getState().currentAssessmentId || assessments[0]?.id;
-  }, [searchParams, assessments]);
+    return searchParams.get("assessmentId") || useStore.getState().currentAssessmentId || scopeAssessments[0]?.id;
+  }, [searchParams, scopeAssessments]);
 
   const activeAsm = useMemo(() => {
-    return assessments.find((a) => a.id === assessmentId) || assessments[0];
-  }, [assessments, assessmentId]);
+    return scopeAssessments.find((a) => a.id === assessmentId) || scopeAssessments[0];
+  }, [scopeAssessments, assessmentId]);
 
   const activeDeps = useMemo(() => {
     if (!activeAsm) return [];
@@ -81,7 +95,7 @@ export default function ReportsPage() {
             <Select value={activeAsm.id} onValueChange={handleAssessmentChange}>
               <SelectTrigger className="w-56 h-9"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {assessments.map((a) => (
+                {scopeAssessments.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.company} ({a.year})
                   </SelectItem>

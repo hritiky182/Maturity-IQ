@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { PageShell } from "@/components/page-shell";
 import { useStore } from "@/lib/store";
 import { getAssessmentDepartments, departmentScore, maturityColor, maturityLevel, priorityColor } from "@/lib/scoring";
@@ -7,10 +8,26 @@ import { AlertTriangle, ArrowRight } from "lucide-react";
 const TARGET = 4.2;
 
 export default function GapAnalysisPage() {
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
   const assessments = useStore((state) => state.assessments);
-  
+
+  const userRole = localStorage.getItem("userRole") || currentUser?.role;
+
+  const activeOrg = useMemo(() => {
+    const matched = organizations.find((o) => o.id === currentUser?.organizationId);
+    return matched || organizations[0];
+  }, [organizations, currentUser]);
+
+  const scopeAssessments = useMemo(() => {
+    if (userRole === "Admin") return assessments;
+    return assessments.filter((a) => a.company.toLowerCase() === activeOrg.name.toLowerCase());
+  }, [assessments, activeOrg, userRole]);
+
   // Find active assessment
-  const activeAsm = assessments.find((a) => a.status === "Completed") || assessments.find((a) => a.status === "In Progress") || assessments[0];
+  const activeAsm = useMemo(() => {
+    return scopeAssessments.find((a) => a.status === "Completed") || scopeAssessments.find((a) => a.status === "In Progress") || scopeAssessments[0];
+  }, [scopeAssessments]);
   
   const departments = activeAsm ? getAssessmentDepartments(activeAsm.id) : [];
 
@@ -37,7 +54,7 @@ export default function GapAnalysisPage() {
   return (
     <PageShell
       title="Gap Analysis"
-      description={`Consulting-style view of the delta between current maturity and target state for ${activeAsm?.company || "Emaar Holdings"}.`}
+      description={`Consulting-style view of the delta between current maturity and target state for ${activeAsm?.company || activeOrg.name}.`}
     >
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">

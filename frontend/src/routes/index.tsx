@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
@@ -12,13 +13,35 @@ import { getAssessmentDepartments, departmentScore, maturityColor, maturityLevel
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
   const assessments = useStore((state) => state.assessments);
   const recommendations = useStore((state) => state.recommendations);
   
+  const userRole = localStorage.getItem("userRole") || currentUser?.role;
+
+  const activeOrg = useMemo(() => {
+    const matched = organizations.find((o) => o.id === currentUser?.organizationId);
+    return matched || organizations[0];
+  }, [organizations, currentUser]);
+
+  const scopeAssessments = useMemo(() => {
+    if (userRole === "Admin") return assessments;
+    return assessments.filter((a) => a.company.toLowerCase() === activeOrg.name.toLowerCase());
+  }, [assessments, activeOrg, userRole]);
+
   // Find latest active assessment to show on dashboard
-  const activeAsm = assessments.find((a) => a.status === "Completed") || assessments.find((a) => a.status === "In Progress") || assessments[0];
+  const activeAsm = useMemo(() => {
+    return scopeAssessments.find((a) => a.status === "Completed") || scopeAssessments.find((a) => a.status === "In Progress") || scopeAssessments[0];
+  }, [scopeAssessments]);
   
   const activeDeps = activeAsm ? getAssessmentDepartments(activeAsm.id) : [];
+
+  const scopeRecommendations = useMemo(() => {
+    if (userRole === "Admin" || !activeAsm) return recommendations;
+    const activeDepNames = activeDeps.map((d) => d.name.toLowerCase());
+    return recommendations.filter((r) => activeDepNames.includes(r.department.toLowerCase()));
+  }, [recommendations, activeDeps, activeAsm, userRole]);
   const overall = activeDeps.length ? overallScore(activeDeps) : 0;
   
   const barData = activeDeps.map((d) => ({
@@ -68,7 +91,7 @@ export default function Dashboard() {
   return (
     <PageShell
       title="Executive Dashboard"
-      description={`Real-time view of organizational maturity across all business functions for ${activeAsm?.company || "Emaar Properties"}.`}
+      description={`Real-time view of organizational maturity across all business functions for ${activeAsm?.company || activeOrg.name}.`}
       actions={
         <>
           <Button variant="outline" onClick={() => window.print()}>Export report</Button>
@@ -107,7 +130,7 @@ export default function Dashboard() {
         />
         <KpiCard 
           label="Improvement Opportunities" 
-          value={String(recommendations.length)} 
+          value={String(scopeRecommendations.length)} 
           sub="Prioritized initiatives" 
           icon={Sparkles} 
         />
@@ -204,7 +227,7 @@ export default function Dashboard() {
             <Link to="/assessments" className="text-xs text-primary font-medium inline-flex items-center gap-1">View all <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ul className="mt-4 divide-y divide-border">
-            {assessments.filter((a) => a.status !== "Completed" && a.status !== "Submitted").slice(0, 5).map((a) => (
+            {scopeAssessments.filter((a) => a.status !== "Completed" && a.status !== "Submitted").slice(0, 5).map((a) => (
               <li key={a.id} className="py-3 flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-[10px] font-semibold">
                   {a.company.slice(0, 2).toUpperCase()}
@@ -227,7 +250,7 @@ export default function Dashboard() {
             <Link to="/recommendations" className="text-xs text-primary font-medium inline-flex items-center gap-1">View all <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ul className="mt-4 space-y-3">
-            {recommendations.slice(0, 4).map((r) => (
+            {scopeRecommendations.slice(0, 4).map((r) => (
               <li key={r.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="text-sm font-medium leading-snug">{r.title}</div>

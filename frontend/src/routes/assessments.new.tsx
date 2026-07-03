@@ -40,6 +40,8 @@ export default function WizardPage() {
 
   // Store actions
   const assessments = useStore((state) => state.assessments);
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
   const answers = useStore((state) => state.answers);
   const questions = useStore((state) => state.questions);
   const createAssessment = useStore((state) => state.createAssessment);
@@ -51,6 +53,28 @@ export default function WizardPage() {
   const existingAsm = useMemo(() => {
     return assessments.find((a) => a.id === idParam) || null;
   }, [assessments, idParam]);
+
+  // Set default values from logged in user/organization if no existingAsm
+  useEffect(() => {
+    if (!existingAsm && currentUser) {
+      setEmail(currentUser.email);
+      setContactPerson(currentUser.fullName);
+      
+      const matchedOrg = organizations.find((o) => o.id === currentUser.organizationId);
+      if (matchedOrg) {
+        setCompanyName(matchedOrg.name);
+        setIndustry(matchedOrg.industry || "Technology");
+        setCountry(matchedOrg.country || "UAE");
+        setEmployees(matchedOrg.employees || "1200");
+        setRevenue(matchedOrg.revenue || "$250M");
+        setCompanyType(matchedOrg.type || "Private");
+        setPhone(matchedOrg.phone || "+971 50 123 4567");
+        if (matchedOrg.assessmentYear) {
+          setYear(String(matchedOrg.assessmentYear));
+        }
+      }
+    }
+  }, [existingAsm, currentUser, organizations]);
 
   // Wizard Steps
   const [step, setStep] = useState(0);
