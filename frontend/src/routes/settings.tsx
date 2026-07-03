@@ -24,11 +24,11 @@ export default function SettingsPage() {
   const [active, setActive] = useState("general");
 
   // Form states
-  const [workspaceName, setWorkspaceName] = useState("Emaar Holdings");
+  const [workspaceName, setWorkspaceName] = useState("Maturity IQ Workspace");
   const [language, setLanguage] = useState("en");
   const [timezone, setTimezone] = useState("gst");
   const [fiscalYear, setFiscalYear] = useState("jan");
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false); // Default false for light mode
   const [autoSave, setAutoSave] = useState(true);
   const [requireSignoff, setRequireSignoff] = useState(false);
 
@@ -36,12 +36,12 @@ export default function SettingsPage() {
   const [targetMaturity, setTargetMaturity] = useState("4.2");
 
   // Report Branding
-  const [reportHeader, setReportHeader] = useState("Emaar Holdings · Confidential");
-  const [reportFooter, setReportFooter] = useState("© 2026 Emaar Holdings. Prepared by Maturity IQ.");
+  const [reportHeader, setReportHeader] = useState("Organization Capability Summary · Confidential");
+  const [reportFooter, setReportFooter] = useState("© 2026. Prepared by Maturity IQ.");
   const [primaryColor, setPrimaryColor] = useState("#1E3A8A");
   const [accentColor, setAccentColor] = useState("#0EA5E9");
   const [disclaimer, setDisclaimer] = useState(
-    "This report has been prepared for the exclusive use of the executive committee and board of directors of Emaar Holdings."
+    "This report has been prepared for the exclusive use of the executive committee and board of directors."
   );
 
   const handleSaveChanges = () => {
@@ -56,7 +56,7 @@ export default function SettingsPage() {
   };
 
   const handleResetData = () => {
-    if (confirm("WARNING: This will wipe out all custom assessments, questions answered, roadmap initiatives, and restore the default 200 assessments database. Continue?")) {
+    if (confirm("WARNING: This will wipe out all custom assessments, questions answered, roadmap initiatives, and restore the default assessments database. Continue?")) {
       resetAllData();
       toast.success("Database restored to default seeds!");
       // Reload page to refresh state
@@ -143,7 +143,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50/20 dark:border-rose-900/40 p-4">
                   <div>
                     <div className="text-sm font-semibold text-foreground">Reset Platform Data</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Wipe all custom assessments, answers, files and restore initial 200 items database.</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Wipe all custom assessments, answers, files and restore initial seed database.</div>
                   </div>
                   <Button variant="destructive" onClick={handleResetData} className="gap-1.5 shrink-0">
                     <RotateCcw className="h-4 w-4" /> Reset Data
@@ -243,9 +243,9 @@ export default function SettingsPage() {
               <h2 className="text-lg font-semibold text-foreground">Assessment Frequency</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { title: "Annual", desc: "Full 12-department assessment run once per fiscal year." },
+                  { title: "Annual", desc: "Full maturity assessment run once per fiscal year." },
                   { title: "Semi-annual", desc: "Two full runs — mid-year and year-end reviews." },
-                  { title: "Quarterly light-touch", desc: "Rolling assessment of 3 departments each quarter." },
+                  { title: "Quarterly light-touch", desc: "Rolling assessment of business functions each quarter." },
                   { title: "Continuous", desc: "Always-on maturity monitoring with monthly deltas." },
                 ].map((c, i) => (
                   <button key={c.title} className={cn("text-left rounded-xl border p-5 transition cursor-pointer bg-card", i === 0 ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40")}>

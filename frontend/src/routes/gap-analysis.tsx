@@ -43,7 +43,7 @@ export default function GapAnalysisPage() {
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="text-xs text-muted-foreground">Aggregate Gap</div>
           <div className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{totalGap}</div>
-          <div className="text-xs text-muted-foreground">across {departments.length} departments</div>
+          <div className="text-xs text-muted-foreground">across {departments.length} business functions</div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="text-xs text-muted-foreground">Target State</div>
@@ -53,7 +53,7 @@ export default function GapAnalysisPage() {
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <div className="text-xs text-muted-foreground">Critical Priority</div>
           <div className="mt-2 text-3xl font-semibold tabular-nums text-rose-600">{critical}</div>
-          <div className="text-xs text-muted-foreground">departments requiring intervention</div>
+          <div className="text-xs text-muted-foreground">functions requiring intervention</div>
         </div>
         <div className="rounded-2xl border border-border bg-primary text-primary-foreground p-5 shadow-sm">
           <div className="text-xs opacity-80">Executive Recommendation</div>

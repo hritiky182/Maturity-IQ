@@ -47,7 +47,7 @@ export default function RecommendationsPage() {
   return (
     <PageShell
       title="AI Recommendations"
-      description={`Prioritized actions generated from maturity assessment scores and real estate benchmarks for ${activeAsm?.company || "Emaar Holdings"}.`}
+      description={`Prioritized actions generated from maturity assessment scores and industry-specific benchmarks for ${activeAsm?.company || "Emaar Properties"}.`}
       actions={<Button onClick={handleRegenerate}><Sparkles className="h-4 w-4 mr-1" /> Regenerate</Button>}
     >
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -96,7 +96,7 @@ export default function RecommendationsPage() {
                 <div className="text-sm font-semibold mt-1 text-foreground">{r.timeline}</div>
               </div>
               <div>
-                <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground"><Building2 className="h-3 w-3" /> Owner</div>
+                <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground"><Building2 className="h-3 w-3" /> Function</div>
                 <div className="text-sm font-semibold mt-1 truncate text-foreground">{r.department}</div>
               </div>
             </div>

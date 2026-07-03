@@ -15,14 +15,14 @@ export default function Dashboard() {
   const assessments = useStore((state) => state.assessments);
   const recommendations = useStore((state) => state.recommendations);
   
-  // Find latest active assessment to show on dashboard (Completed or In Progress, fallback to first)
+  // Find latest active assessment to show on dashboard
   const activeAsm = assessments.find((a) => a.status === "Completed") || assessments.find((a) => a.status === "In Progress") || assessments[0];
   
   const activeDeps = activeAsm ? getAssessmentDepartments(activeAsm.id) : [];
   const overall = activeDeps.length ? overallScore(activeDeps) : 0;
   
   const barData = activeDeps.map((d) => ({
-    name: d.name.split(" ")[0],
+    name: d.name.length > 10 ? d.name.slice(0, 8) + "…" : d.name,
     score: Number(departmentScore(d).toFixed(2)),
   }));
 
@@ -43,7 +43,7 @@ export default function Dashboard() {
     { m: "Aug", completion: 86 },
   ];
 
-  // Count departments per maturity level
+  // Count functions per maturity level
   const levelsCount = { Initial: 0, Developing: 0, Defined: 0, Managed: 0, Optimized: 0 };
   activeDeps.forEach((d) => {
     const s = departmentScore(d);
@@ -64,13 +64,11 @@ export default function Dashboard() {
     .sort((a, b) => b.s - a.s);
 
   const highRiskCount = activeDeps.filter((d) => departmentScore(d) > 0 && departmentScore(d) < 2.5).length;
-  
-  const completedCount = assessments.filter(a => a.status === "Completed").length;
 
   return (
     <PageShell
       title="Executive Dashboard"
-      description={`Real-time view of organizational maturity across all business functions for ${activeAsm?.company || "Emaar Holdings"}.`}
+      description={`Real-time view of organizational maturity across all business functions for ${activeAsm?.company || "Emaar Properties"}.`}
       actions={
         <>
           <Button variant="outline" onClick={() => window.print()}>Export report</Button>
@@ -78,24 +76,25 @@ export default function Dashboard() {
         </>
       }
     >
+      {/* Executive KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <KpiCard 
           tone="primary" 
-          label="Overall Maturity Score" 
+          label="Organization Score" 
           value={overall ? overall.toFixed(2) : "0.00"}
           sub={`Level: ${maturityLevel(overall)} · Benchmark 3.2`} 
           trend="+0.4 YoY" 
           icon={TrendingUp} 
         />
         <KpiCard 
-          label="Assessment Completion" 
+          label="Assessment Trends" 
           value={activeAsm ? `${activeAsm.completion}%` : "0%"} 
           sub="Current Cycle Progress" 
           trend={activeAsm?.status} 
           icon={ClipboardCheck} 
         />
         <KpiCard 
-          label="Departments Assessed" 
+          label="Business Functions Assessed" 
           value={`${activeDeps.filter(d => departmentScore(d) > 0).length} / ${activeDeps.length}`} 
           sub="Full organizational coverage" 
           icon={Building2} 
@@ -109,7 +108,7 @@ export default function Dashboard() {
         <KpiCard 
           label="Improvement Opportunities" 
           value={String(recommendations.length)} 
-          sub="Prioritized recommendations" 
+          sub="Prioritized initiatives" 
           icon={Sparkles} 
         />
       </div>
@@ -118,8 +117,8 @@ export default function Dashboard() {
         <div className="xl:col-span-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h3 className="text-base font-semibold">Maturity by Department</h3>
-              <p className="text-sm text-muted-foreground">Average score across 5 sections per function</p>
+              <h3 className="text-base font-semibold">Business Function Scores</h3>
+              <p className="text-sm text-muted-foreground">Average score across 5 categories per business function</p>
             </div>
             <div className="text-xs text-muted-foreground">Scale 1–5</div>
           </div>
@@ -146,7 +145,7 @@ export default function Dashboard() {
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <h3 className="text-base font-semibold">Maturity Distribution</h3>
-          <p className="text-sm text-muted-foreground">Departments per maturity level</p>
+          <p className="text-sm text-muted-foreground">Business functions per maturity level</p>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -163,8 +162,8 @@ export default function Dashboard() {
 
       <div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="text-base font-semibold">Assessment Completion Trend</h3>
-          <p className="text-sm text-muted-foreground">Rolling 8-month program view</p>
+          <h3 className="text-base font-semibold">Industry Benchmark</h3>
+          <p className="text-sm text-muted-foreground">Rolling 8-month capability alignment</p>
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData} margin={{ left: -20 }}>
@@ -205,7 +204,7 @@ export default function Dashboard() {
             <Link to="/assessments" className="text-xs text-primary font-medium inline-flex items-center gap-1">View all <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ul className="mt-4 divide-y divide-border">
-            {assessments.filter((a) => a.status !== "Completed").slice(0, 5).map((a) => (
+            {assessments.filter((a) => a.status !== "Completed" && a.status !== "Submitted").slice(0, 5).map((a) => (
               <li key={a.id} className="py-3 flex items-center gap-3">
                 <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center text-[10px] font-semibold">
                   {a.company.slice(0, 2).toUpperCase()}
@@ -244,7 +243,7 @@ export default function Dashboard() {
 
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold">Department Ranking</h3>
+            <h3 className="text-base font-semibold">Business Function Ranking</h3>
             <Link to="/departments" className="text-xs text-primary font-medium inline-flex items-center gap-1">Details <ChevronRight className="h-3 w-3" /></Link>
           </div>
           <ol className="mt-4 space-y-2">
@@ -269,9 +268,9 @@ export default function Dashboard() {
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3">
           {[
-            { d: "Q1 2026", title: "Executive Steering Review", who: "CEO · COO" },
-            { d: "Feb 14", title: "Strategy department deep-dive", who: "CSO office" },
-            { d: "Mar 03", title: "IT & Cybersecurity assessment", who: "CTO office" },
+            { d: "Q1 2026", title: "Executive Steering Review", who: "CEO · Sponsor" },
+            { d: "Feb 14", title: "Strategy function deep-dive", who: "CSO office" },
+            { d: "Mar 03", title: "IT & Cybersecurity assessment", who: "IT Director" },
             { d: "Mar 22", title: "Board maturity readout", who: "Board of Directors" },
           ].map((e) => (
             <div key={e.title} className="rounded-xl border border-border p-4">

@@ -23,7 +23,7 @@ export default function DepartmentsPage() {
 
   if (departments.length === 0) {
     return (
-      <PageShell title="Department Results" description="Explore maturity results by business function.">
+      <PageShell title="Business Function Results" description="Explore maturity results by business function.">
         <div className="rounded-2xl border border-border bg-card p-12 text-center shadow-sm">
           <div className="text-muted-foreground">No active assessment found. Please create and complete an assessment first.</div>
         </div>
@@ -49,7 +49,7 @@ export default function DepartmentsPage() {
   const weaknesses = dep ? [...dep.sections].sort((a, b) => sectionScore(a) - sectionScore(b)).slice(0, 2) : [];
 
   return (
-    <PageShell title="Department Results" description={`Explore maturity results by business function for ${activeAsm?.company || "Emaar Holdings"}.`}>
+    <PageShell title="Business Function Results" description={`Explore maturity results by business function for ${activeAsm?.company || "Emaar Holdings"}.`}>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
         {departments.map((d) => {
           const s = departmentScore(d);
@@ -80,7 +80,7 @@ export default function DepartmentsPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="text-xs text-muted-foreground">Department Score</div>
+              <div className="text-xs text-muted-foreground">Function Score</div>
               <div className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{score.toFixed(2)}</div>
               <div className="mt-1 text-xs text-muted-foreground">of 5.00</div>
             </div>

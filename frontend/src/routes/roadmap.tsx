@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Kanban, ListChecks, CalendarClock, Plus, ChevronRight, ChevronLeft, ArrowRightLeft, Trash2 } from "lucide-react";
+import { Kanban, ListChecks, CalendarClock, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_COLS = ["Not Started", "In Progress", "On Hold", "Completed"] as const;
@@ -29,7 +29,7 @@ export default function RoadmapPage() {
   const [quarter, setQuarter] = useState<"Q1" | "Q2" | "Q3" | "Q4">("Q1");
   const [status, setStatus] = useState<"Not Started" | "In Progress" | "On Hold" | "Completed">("Not Started");
   const [progress, setProgress] = useState(0);
-  const [department, setDepartment] = useState("Operations");
+  const [department, setDepartment] = useState("Strategy");
 
   const handleAddInitiative = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,7 +87,7 @@ export default function RoadmapPage() {
 
   return (
     <PageShell
-      title="Improvement Roadmap"
+      title="Transformation Roadmap"
       description="Strategic initiatives and rollout calendar derived from your assessment recommendations."
       actions={
         <div className="flex items-center gap-3">
@@ -144,7 +144,6 @@ export default function RoadmapPage() {
                         </div>
                         
                         <div className="flex items-center gap-2">
-                          {/* Column quick move dropdown-like select */}
                           <select 
                             value={r.status} 
                             onChange={(e) => handleStatusChange(r.id, e.target.value)}
@@ -180,7 +179,7 @@ export default function RoadmapPage() {
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40 border-b border-border">
                 <th className="px-6 py-3 font-medium">Initiative</th>
                 <th className="px-6 py-3 font-medium">Owner</th>
-                <th className="px-6 py-3 font-medium">Department</th>
+                <th className="px-6 py-3 font-medium">Business Function</th>
                 <th className="px-6 py-3 font-medium">Timeline</th>
                 <th className="px-6 py-3 font-medium">Status</th>
                 <th className="px-6 py-3 font-medium">Progress</th>
@@ -277,14 +276,14 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* Add Initiative Modal (Overlay) */}
+      {/* Add Initiative Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="relative w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-semibold text-foreground">Add Roadmap Initiative</h3>
-              <button onClick={() => setShowAddModal(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-5 w-5" />
+              <h3 className="text-lg font-semibold text-foreground">Add Transformation Initiative</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                <span className="text-xl font-bold">×</span>
               </button>
             </div>
             
@@ -294,7 +293,7 @@ export default function RoadmapPage() {
                 <Input 
                   value={initiative} 
                   onChange={(e) => setInitiative(e.target.value)} 
-                  placeholder="e.g. Implement BIM data pipelines"
+                  placeholder="e.g. Implement modern CRM / ERP automation systems"
                   className="mt-1"
                 />
               </div>
@@ -310,16 +309,18 @@ export default function RoadmapPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Department</Label>
+                  <Label className="text-xs font-semibold text-muted-foreground">Business Function</Label>
                   <Select value={department} onValueChange={setDepartment}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Strategy">Strategy</SelectItem>
                       <SelectItem value="Operations">Operations</SelectItem>
                       <SelectItem value="Innovation">Innovation</SelectItem>
-                      <SelectItem value="Finance">Finance</SelectItem>
-                      <SelectItem value="IT">IT</SelectItem>
+                      <SelectItem value="IT">Information Technology</SelectItem>
+                      <SelectItem value="Legal & Compliance">Legal & Compliance</SelectItem>
+                      <SelectItem value="Risk Management">Risk Management</SelectItem>
                       <SelectItem value="HR">Human Resources</SelectItem>
+                      <SelectItem value="Project Management">Project Management</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -387,26 +388,5 @@ export default function RoadmapPage() {
         </div>
       )}
     </PageShell>
-  );
-}
-
-// Icon for close button
-function X(props: any) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
   );
 }

@@ -6,19 +6,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useStore, Answer } from "@/lib/store";
-import { DEPARTMENT_DEFS } from "@/lib/mock-data";
+import { INDUSTRY_TEMPLATES, Organization } from "@/lib/mock-data";
 import { getAssessmentDepartments, departmentScore, sectionScore, maturityColor, maturityLevel, departmentCompletion } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
-import { Check, ChevronLeft, ChevronRight, Save, Upload, FileText, X, Sparkles, Building, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Save, Upload, FileText, X, Building, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const STEPS = [
   { key: "org", label: "Organization" },
-  { key: "dept", label: "Departments" },
+  { key: "dept", label: "Business Functions" },
   { key: "questions", label: "Questionnaire" },
   { key: "review", label: "Review & Submit" },
+];
+
+const INDUSTRIES = [
+  "Real Estate",
+  "Healthcare",
+  "Government",
+  "Education",
+  "Manufacturing",
+  "Banking & Finance",
+  "Technology",
+  "Consulting",
+  "Retail",
+  "Other Enterprises"
 ];
 
 export default function WizardPage() {
@@ -33,7 +45,6 @@ export default function WizardPage() {
   const createAssessment = useStore((state) => state.createAssessment);
   const updateAssessment = useStore((state) => state.updateAssessment);
   const saveAnswer = useStore((state) => state.saveAnswer);
-  const saveMultipleAnswers = useStore((state) => state.saveMultipleAnswers);
   const regenerateRecommendations = useStore((state) => state.regenerateRecommendations);
 
   // Load existing assessment if ID is provided
@@ -46,18 +57,39 @@ export default function WizardPage() {
 
   // Form Fields - Step 1
   const [companyName, setCompanyName] = useState("");
-  const [industry, setIndustry] = useState("Real Estate Development");
-  const [country, setCountry] = useState("ae");
-  const [employees, setEmployees] = useState("3500");
-  const [revenue, setRevenue] = useState("$2.8B");
-  const [companyType, setCompanyType] = useState("public");
+  const [industry, setIndustry] = useState("Real Estate");
+  const [country, setCountry] = useState("UAE");
+  const [employees, setEmployees] = useState("1200");
+  const [revenue, setRevenue] = useState("$250M");
+  const [companyType, setCompanyType] = useState("Private");
   const [year, setYear] = useState("2026");
-  const [sponsor, setSponsor] = useState("Sarah Malik");
+  const [contactPerson, setContactPerson] = useState("Sarah Malik");
+  const [email, setEmail] = useState("sarah.malik@maturityiq.com");
+  const [phone, setPhone] = useState("+971 50 123 4567");
 
-  // Selected Departments - Step 2
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([
-    "strategy", "operations", "innovation", "finance", "it"
-  ]);
+  // Helper to map industry string to template ID
+  const getTemplateIdForIndustry = (ind: string) => {
+    if (ind === "Real Estate") return "realestate";
+    if (ind === "Healthcare") return "healthcare";
+    if (ind === "Government") return "government";
+    if (ind === "Education") return "education";
+    return "general";
+  };
+
+  const activeTemplate = useMemo(() => {
+    const tempId = getTemplateIdForIndustry(industry);
+    return INDUSTRY_TEMPLATES.find((t) => t.id === tempId) || INDUSTRY_TEMPLATES[0];
+  }, [industry]);
+
+  // Selected Business Functions - Step 2
+  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+
+  // Set default business functions once activeTemplate loads
+  useEffect(() => {
+    if (!existingAsm && activeTemplate) {
+      setSelectedDepts(activeTemplate.functions.slice(0, 5).map((f) => f.id));
+    }
+  }, [activeTemplate, existingAsm]);
 
   // Step 3 state
   const [activeDepIdx, setActiveDepIdx] = useState(0);
@@ -70,8 +102,18 @@ export default function WizardPage() {
       setCompanyName(existingAsm.company);
       setYear(String(existingAsm.year));
       setSelectedDepts(existingAsm.departments);
+      setContactPerson(existingAsm.contactPerson || "Sarah Malik");
+      setEmail(existingAsm.email || "");
+      setPhone(existingAsm.phone || "");
       
-      // If we are resuming, auto-forward to questionnaire or review depending on completion
+      // Determine industry string based on assessment template ID
+      let matchedInd = "Real Estate";
+      if (existingAsm.industry === "healthcare") matchedInd = "Healthcare";
+      else if (existingAsm.industry === "government") matchedInd = "Government";
+      else if (existingAsm.industry === "education") matchedInd = "Education";
+      else if (existingAsm.industry === "general") matchedInd = "Technology";
+      setIndustry(matchedInd);
+
       if (existingAsm.completion === 100) {
         setStep(3); // Review
       } else {
@@ -80,18 +122,19 @@ export default function WizardPage() {
     } else {
       setStep(0); // Org Info
     }
-  }, [idParam]); // Trigger only when loading a different assessment
+  }, [idParam, existingAsm]);
 
-  // Get active department and section
+  // Get active business function and category section
   const currentDepId = selectedDepts[activeDepIdx] || selectedDepts[0];
-  const depDef = DEPARTMENT_DEFS.find((d) => d.id === currentDepId) || DEPARTMENT_DEFS[0];
-  const currentSectionName = depDef.sections[activeSecIdx] || depDef.sections[0];
-  const currentSectionId = `${depDef.id}-s${activeSecIdx}`;
+  const depDef = activeTemplate.functions.find((d) => d.id === currentDepId) || activeTemplate.functions[0];
+  const currentSectionName = depDef?.sections[activeSecIdx] || depDef?.sections[0] || "Section 1";
+  const currentSectionId = depDef ? `${depDef.id}-s${activeSecIdx}` : `strategy-s0`;
 
   // Get questions in current section
   const sectionQuestions = useMemo(() => {
-    return questions.filter((q) => q.id.startsWith(`${currentSectionId}-`));
-  }, [questions, currentSectionId]);
+    const tempId = getTemplateIdForIndustry(industry);
+    return questions.filter((q) => q.id.startsWith(`${tempId}-${currentSectionId}-`));
+  }, [questions, currentSectionId, industry]);
 
   // Get answers for the current assessment
   const asmAnswers = useMemo(() => {
@@ -99,15 +142,14 @@ export default function WizardPage() {
     return answers[idParam] || {};
   }, [answers, idParam]);
 
-  // Construct active department details for scoring display
-  const activeDepartments = useMemo(() => {
+  // Construct active function details for scoring display
+  const activeFunctions = useMemo(() => {
     if (!idParam) return [];
     return getAssessmentDepartments(idParam);
   }, [idParam, answers]);
 
-  const activeDep = activeDepartments.find((d) => d.id === currentDepId) || activeDepartments[0];
+  const activeDep = activeFunctions.find((d) => d.id === currentDepId) || activeFunctions[0];
 
-  // Auto-saved timer simulator
   const triggerAutoSaveTime = () => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -137,7 +179,7 @@ export default function WizardPage() {
 
   const handleFileUpload = (qId: string) => {
     if (!idParam) return;
-    const filename = prompt("Enter mock document name to upload (e.g. Policies_Handbook_v1.pdf):");
+    const filename = prompt("Enter mock document name to upload (e.g. Audit_Trail_AuditPolicy.pdf):");
     if (!filename) return;
 
     const currentAns = asmAnswers[qId] || { score: 0, comment: "", evidence: [] };
@@ -166,46 +208,56 @@ export default function WizardPage() {
   // Validation & Navigation Actions
   const handleStep1Submit = () => {
     if (!companyName.trim()) {
-      toast.error("Company Name is required");
+      toast.error("Organization Name is required");
       return;
     }
-    if (!employees || parseInt(employees) <= 0) {
-      toast.error("Please enter a valid number of employees");
+    if (!contactPerson.trim()) {
+      toast.error("Contact Person is required");
       return;
     }
-    if (!sponsor.trim()) {
-      toast.error("Executive Sponsor is required");
+    if (!email.trim() || !email.includes("@")) {
+      toast.error("A valid email is required");
       return;
     }
 
     if (!idParam) {
-      // Create new assessment in store
-      const countryNames: Record<string, string> = { ae: "UAE", sa: "Saudi Arabia", qa: "Qatar" };
+      // Create new assessment
+      const tempId = getTemplateIdForIndustry(industry);
       const newAsmId = createAssessment({
-        name: `${year} Annual Maturity Review`,
+        name: `${year} Capability Assessment`,
         company: companyName,
         status: "Draft",
         year: parseInt(year),
+        industry: tempId,
         departments: selectedDepts,
+        sponsor: contactPerson,
+        contactPerson,
+        email,
+        phone,
       });
 
       setSearchParams({ id: newAsmId });
       toast.success("Assessment draft initialized");
     } else {
       // Update existing
+      const tempId = getTemplateIdForIndustry(industry);
       updateAssessment(idParam, {
         company: companyName,
         year: parseInt(year),
-        name: `${year} Annual Maturity Review`,
+        name: `${year} Capability Assessment`,
+        industry: tempId,
+        contactPerson,
+        email,
+        phone,
       });
     }
 
-    setStep(1); // Proceed to depts
+    setStep(1); // Proceed to functions
   };
 
   const handleStep2Submit = () => {
     if (selectedDepts.length === 0) {
-      toast.error("Please select at least one department to assess");
+      toast.error("Please select at least one business function to assess");
       return;
     }
 
@@ -235,8 +287,8 @@ export default function WizardPage() {
 
   // Step 2 Helper Actions
   const handleSelectAllDepts = () => {
-    setSelectedDepts(DEPARTMENT_DEFS.map((d) => d.id));
-    toast.success("All 12 departments selected");
+    setSelectedDepts(activeTemplate.functions.map((f) => f.id));
+    toast.success(`All ${activeTemplate.functions.length} functions selected`);
   };
 
   const handleDeselectAllDepts = () => {
@@ -248,13 +300,13 @@ export default function WizardPage() {
     if (activeSecIdx < depDef.sections.length - 1) {
       setActiveSecIdx((s) => s + 1);
     } else {
-      // Move to next department
+      // Move to next business function
       if (activeDepIdx < selectedDepts.length - 1) {
         setActiveDepIdx((d) => d + 1);
         setActiveSecIdx(0);
-        toast.info(`Moving to ${DEPARTMENT_DEFS.find((d) => d.id === selectedDepts[activeDepIdx + 1])?.name} questionnaire`);
+        toast.info(`Moving to ${activeTemplate.functions.find((f) => f.id === selectedDepts[activeDepIdx + 1])?.name} questionnaire`);
       } else {
-        // Last department, go to Step 4 Review
+        // Last function, go to Step 4 Review
         setStep(3);
       }
     }
@@ -264,13 +316,13 @@ export default function WizardPage() {
     if (activeSecIdx > 0) {
       setActiveSecIdx((s) => s - 1);
     } else {
-      // Move to previous department
+      // Move to previous function
       if (activeDepIdx > 0) {
         setActiveDepIdx((d) => d - 1);
-        setActiveSecIdx(4); // Last section of previous dep
-        toast.info(`Moving back to ${DEPARTMENT_DEFS.find((d) => d.id === selectedDepts[activeDepIdx - 1])?.name}`);
+        setActiveSecIdx(4); // Last section of previous function
+        toast.info(`Moving back to ${activeTemplate.functions.find((f) => f.id === selectedDepts[activeDepIdx - 1])?.name}`);
       } else {
-        // First department, first section: Go back to Step 2 selection
+        // First function, first section: Go back to Step 2 selection
         setStep(1);
       }
     }
@@ -323,44 +375,40 @@ export default function WizardPage() {
       {/* STEP 1: ORGANIZATION INFORMATION */}
       {step === 0 && (
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
-          <h2 className="text-lg font-semibold text-foreground">Organization Information</h2>
-          <p className="text-sm text-muted-foreground">Tell us about the entity being assessed.</p>
+          <h2 className="text-lg font-semibold text-foreground font-sans">Organization Information</h2>
+          <p className="text-sm text-muted-foreground">Specify the properties, parameters, and industry context of the target organization.</p>
           
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Company Name</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Organization Name</Label>
               <Input 
                 value={companyName} 
                 onChange={(e) => setCompanyName(e.target.value)} 
-                placeholder="e.g. Emaar Holdings"
+                placeholder="e.g. Emaar Properties"
                 className="mt-1.5"
               />
             </div>
             
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Industry</Label>
-              <Input 
-                value={industry} 
-                onChange={(e) => setIndustry(e.target.value)} 
-                placeholder="Real Estate Development"
-                className="mt-1.5"
-                disabled
-              />
+              <Label className="text-xs font-medium text-muted-foreground">Industry Sector</Label>
+              <Select value={industry} onValueChange={(val) => setIndustry(val)}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map((ind) => (
+                    <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Country</Label>
-              <Select value={country} onValueChange={setCountry}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ae">United Arab Emirates</SelectItem>
-                  <SelectItem value="sa">Saudi Arabia</SelectItem>
-                  <SelectItem value="qa">Qatar</SelectItem>
-                  <SelectItem value="bh">Bahrain</SelectItem>
-                  <SelectItem value="om">Oman</SelectItem>
-                  <SelectItem value="kw">Kuwait</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input 
+                value={country} 
+                onChange={(e) => setCountry(e.target.value)} 
+                placeholder="e.g. UAE"
+                className="mt-1.5"
+              />
             </div>
 
             <div>
@@ -378,20 +426,20 @@ export default function WizardPage() {
               <Input 
                 value={revenue} 
                 onChange={(e) => setRevenue(e.target.value)} 
-                placeholder="e.g. $2.8B"
+                placeholder="e.g. $250M"
                 className="mt-1.5"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Company Type</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Organization Type</Label>
               <Select value={companyType} onValueChange={setCompanyType}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
-                  <SelectItem value="family">Family Office</SelectItem>
-                  <SelectItem value="jv">Joint Venture</SelectItem>
+                  <SelectItem value="Public">Public Enterprise</SelectItem>
+                  <SelectItem value="Private">Private Company</SelectItem>
+                  <SelectItem value="Government">Government Entity</SelectItem>
+                  <SelectItem value="Family">Family Office</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -401,19 +449,40 @@ export default function WizardPage() {
               <Select value={year} onValueChange={setYear}>
                 <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2026">2026</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
-                  <SelectItem value="2023">2023</SelectItem>
+                  <SelectItem value="2026">FY 2026</SelectItem>
+                  <SelectItem value="2025">FY 2025</SelectItem>
+                  <SelectItem value="2024">FY 2024</SelectItem>
+                  <SelectItem value="2023">FY 2023</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Executive Sponsor</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Contact Person</Label>
               <Input 
-                value={sponsor} 
-                onChange={(e) => setSponsor(e.target.value)} 
+                value={contactPerson} 
+                onChange={(e) => setContactPerson(e.target.value)} 
+                className="mt-1.5"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Email Address</Label>
+              <Input 
+                type="email"
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="e.g. name@domain.com"
+                className="mt-1.5"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Phone Number</Label>
+              <Input 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="e.g. +971 50 123 4567"
                 className="mt-1.5"
               />
             </div>
@@ -421,19 +490,19 @@ export default function WizardPage() {
 
           <div className="mt-8 flex justify-end">
             <Button onClick={handleStep1Submit}>
-              Continue to Departments <ChevronRight className="h-4 w-4 ml-1" />
+              Continue to Business Functions <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           </div>
         </div>
       )}
 
-      {/* STEP 2: DEPARTMENT SELECTION */}
+      {/* STEP 2: BUSINESS FUNCTION SELECTION */}
       {step === 1 && (
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Select Departments</h2>
-              <p className="text-sm text-muted-foreground">Choose the business functions to include in this assessment.</p>
+              <h2 className="text-lg font-semibold text-foreground">Select Business Functions</h2>
+              <p className="text-sm text-muted-foreground">Choose the functional areas in scope for this assessment template ({activeTemplate.name}).</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleSelectAllDepts}>Select All</Button>
@@ -442,27 +511,27 @@ export default function WizardPage() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {DEPARTMENT_DEFS.map((d) => {
-              const isSelected = selectedDepts.includes(d.id);
+            {activeTemplate.functions.map((f) => {
+              const isSelected = selectedDepts.includes(f.id);
               return (
                 <button
-                  key={d.id}
+                  key={f.id}
                   onClick={() => 
                     setSelectedDepts((s) => 
-                      isSelected ? s.filter((x) => x !== d.id) : [...s, d.id]
+                      isSelected ? s.filter((x) => x !== f.id) : [...s, f.id]
                     )
                   }
                   className={cn(
-                    "text-left rounded-xl border p-4 transition cursor-pointer",
+                    "text-left rounded-xl border p-4 transition cursor-pointer bg-card",
                     isSelected 
                       ? "border-primary bg-primary/5 ring-1 ring-primary/30" 
-                      : "border-border hover:border-primary/40 hover:bg-muted/40 bg-card",
+                      : "border-border hover:border-primary/40 hover:bg-muted/40",
                   )}
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-foreground">{d.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">{d.sections.length} sections · 25 questions</div>
+                      <div className="text-sm font-semibold text-foreground">{f.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{f.sections.length} categories · 25 parameters</div>
                     </div>
                     <div className={cn(
                       "h-5 w-5 rounded flex items-center justify-center border",
@@ -487,17 +556,17 @@ export default function WizardPage() {
         </div>
       )}
 
-      {/* STEP 3: QUESTIONNAIRE ENGINE */}
+      {/* STEP 3: QUESTIONNAIRE SYSTEM */}
       {step === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6">
-          {/* Left Departments Sidebar with Progress Tracker */}
+          {/* Left Sidebar */}
           <aside className="rounded-2xl border border-border bg-card p-4 shadow-sm h-fit space-y-4">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-2">Departments</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-2">Functions</div>
               <ul className="space-y-1">
                 {selectedDepts.map((id, i) => {
-                  const dName = DEPARTMENT_DEFS.find((x) => x.id === id)?.name || id;
-                  const dObj = activeDepartments.find((x) => x.id === id);
+                  const dName = activeTemplate.functions.find((x) => x.id === id)?.name || id;
+                  const dObj = activeFunctions.find((x) => x.id === id);
                   const completion = dObj ? departmentCompletion(dObj) : 0;
                   return (
                     <li key={id}>
@@ -524,7 +593,7 @@ export default function WizardPage() {
             {/* Sections Sub-navigation */}
             {activeDep && (
               <div className="border-t border-border pt-3">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Sections</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-2">Categories</div>
                 <ul className="space-y-1 text-xs">
                   {depDef.sections.map((secName, sIdx) => {
                     const isSecActive = sIdx === activeSecIdx;
@@ -554,20 +623,20 @@ export default function WizardPage() {
           <div className="rounded-2xl border border-border bg-card p-6 sm:p-8 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">{depDef.name} — {currentSectionName}</h2>
-                <p className="text-sm text-muted-foreground mt-1">Answer the 5 section parameters below. Change values to calculate scores dynamically.</p>
+                <h2 className="text-lg font-semibold text-foreground">{depDef?.name} — {currentSectionName}</h2>
+                <p className="text-sm text-muted-foreground mt-1">Answer the 5 capability evaluation parameters below. Click scores to modify values.</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/40">
                 <Save className="h-3.5 w-3.5" /> <span>{autoSavedTime}</span>
               </div>
             </div>
 
-            {/* Overall Department Progress Bar */}
+            {/* Overall Function Progress Bar */}
             {activeDep && (
               <div className="flex items-center gap-3 bg-muted/40 p-4 rounded-xl border border-border">
                 <div className="flex-1">
                   <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>{depDef.name} Progress</span>
+                    <span>{depDef?.name} Progress</span>
                     <span className="tabular-nums font-semibold text-foreground">{departmentCompletion(activeDep)}% Complete</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -575,7 +644,7 @@ export default function WizardPage() {
                   </div>
                 </div>
                 <div className="text-center px-4 py-1.5 border-l border-border shrink-0">
-                  <div className="text-xs text-muted-foreground">Dep Score</div>
+                  <div className="text-xs text-muted-foreground">Function Score</div>
                   <div className="text-xl font-bold text-foreground tabular-nums">{departmentScore(activeDep).toFixed(2)}</div>
                 </div>
               </div>
@@ -659,7 +728,6 @@ export default function WizardPage() {
                             <SelectTrigger className="w-56 h-9"><SelectValue placeholder="Select maturity tier" /></SelectTrigger>
                             <SelectContent>
                               {q.choices.map((choice, cIdx) => {
-                                // Maps 4 options to score values: 1, 2, 4, 5
                                 const scoreMap = [1, 2, 4, 5];
                                 const scoreVal = scoreMap[cIdx] || 1;
                                 return (
@@ -676,12 +744,6 @@ export default function WizardPage() {
                         {q.type === "multi" && q.choices && (
                           <div className="flex flex-wrap gap-x-4 gap-y-1 bg-muted/30 p-2.5 rounded-lg border border-border">
                             {q.choices.map((choice, cIdx) => {
-                              // We simulate multiple checked states by matching score. E.g. score can be sum of checkboxes.
-                              // Let's store checkbox status inside score: 
-                              // we can compute score based on checked count: each is worth 1.25 points.
-                              // Or let's store checked flags by bitwise operations or simple simulation:
-                              // Since we need to calculate score between 1-5, let's say if 1 checkbox is checked, score is 2. If 2 are checked, score is 3. If 3 are checked, score is 4. If 4 are checked, score is 5. If 0 checked, score is 1.
-                              // This is simple and clean!
                               const isChecked = ans.score > 1 ? ans.score >= (cIdx + 2) : false;
                               return (
                                 <label key={choice} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer select-none">
@@ -689,13 +751,10 @@ export default function WizardPage() {
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={(e) => {
-                                      // recalculate mock score based on checks
                                       let newScore = 1;
                                       if (e.target.checked) {
-                                        // add points
                                         newScore = Math.min(5, (ans.score || 1) + 1);
                                       } else {
-                                        // sub points
                                         newScore = Math.max(1, (ans.score || 1) - 1);
                                       }
                                       handleScoreChange(q.id, newScore);
@@ -797,18 +856,19 @@ export default function WizardPage() {
         <div className="rounded-2xl border border-border bg-card p-8 shadow-sm space-y-6">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Review & Submit</h2>
-            <p className="text-sm text-muted-foreground">Confirm the assessment configuration and department completion scores before submitting.</p>
+            <p className="text-sm text-muted-foreground">Confirm the assessment details and business function completion scores before final submission.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-muted/20 p-5 rounded-xl border border-border">
             <div className="space-y-2">
               <h3 className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Organization Summary</h3>
               <div className="text-sm text-foreground space-y-1">
-                <div>Company Name: <span className="font-semibold">{companyName}</span></div>
+                <div>Organization Name: <span className="font-semibold">{companyName}</span></div>
+                <div>Industry Sector: <span className="font-semibold">{industry}</span></div>
                 <div>Year: <span className="font-semibold">FY {year}</span></div>
-                <div>Executive Sponsor: <span className="font-semibold">{sponsor}</span></div>
-                <div>Employees: <span className="font-semibold">{employees}</span></div>
-                <div>Revenue: <span className="font-semibold">{revenue}</span></div>
+                <div>Contact Person: <span className="font-semibold">{contactPerson}</span></div>
+                <div>Email Address: <span className="font-semibold">{email}</span></div>
+                <div>Phone Number: <span className="font-semibold">{phone}</span></div>
               </div>
             </div>
             <div className="space-y-2">
@@ -816,20 +876,20 @@ export default function WizardPage() {
               <div className="text-sm text-foreground space-y-1">
                 <div>Assessment ID: <span className="font-semibold">{idParam}</span></div>
                 <div>Status: <span className="font-semibold text-primary">{existingAsm?.status || "Draft"}</span></div>
-                <div>Selected Departments: <span className="font-semibold">{selectedDepts.length} of 12</span></div>
+                <div>Selected Functions: <span className="font-semibold">{selectedDepts.length} of {activeTemplate.functions.length}</span></div>
                 <div>Supporting Documents: <span className="font-semibold">{totalUploadedFilesCount} uploaded files</span></div>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Calculated Department Scores</h3>
+            <h3 className="text-sm font-semibold text-foreground">Calculated Business Function Scores</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {selectedDepts.map((id) => {
-                const dObj = activeDepartments.find((x) => x.id === id);
+                const dObj = activeFunctions.find((x) => x.id === id);
                 const score = dObj ? departmentScore(dObj) : 0;
                 const completion = dObj ? departmentCompletion(dObj) : 0;
-                const dName = DEPARTMENT_DEFS.find((x) => x.id === id)?.name || id;
+                const dName = activeTemplate.functions.find((x) => x.id === id)?.name || id;
 
                 return (
                   <div key={id} className="rounded-xl border border-border p-4 bg-card shadow-sm flex flex-col justify-between">
@@ -859,7 +919,7 @@ export default function WizardPage() {
           <div className="rounded-xl border border-border p-4 flex items-center gap-3 bg-muted/40">
             <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
             <div className="text-sm text-foreground leading-snug">
-              By submitting this assessment, the scores will be locked into the portfolio database. You will immediately see the resulting <Link to="/gap-analysis" className="text-primary font-semibold hover:underline">Gap Analysis</Link>, <Link to="/recommendations" className="text-primary font-semibold hover:underline">AI Recommendations</Link>, and <Link to="/roadmap" className="text-primary font-semibold hover:underline">Transformation Roadmap</Link>.
+              By submitting this assessment, the scores will be locked into the database. You will immediately see the resulting <Link to="/gap-analysis" className="text-primary font-semibold hover:underline">Gap Analysis</Link>, <Link to="/recommendations" className="text-primary font-semibold hover:underline">Recommendations</Link>, and <Link to="/roadmap" className="text-primary font-semibold hover:underline">Transformation Roadmap</Link>.
             </div>
           </div>
 

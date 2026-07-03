@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,17 +6,19 @@ import { Label } from "@/components/ui/label";
 import { useStore } from "@/lib/store";
 import { maturityColor, maturityLevel } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
-import { Building2, Upload, FileText, Trash2, Save, HelpCircle } from "lucide-react";
+import { Building2, Upload, FileText, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
 
 export default function OrganizationPage() {
+  const currentUser = useStore((state) => state.currentUser);
   const organizations = useStore((state) => state.organizations);
   const assessments = useStore((state) => state.assessments);
   const updateOrganization = useStore((state) => state.updateOrganization);
 
-  // Active Organization (fallback to first in store)
+  // Active Organization linked to current user
   const activeOrg = useMemo(() => {
-    return organizations[0] || {
+    const mapped = organizations.find((o) => o.id === currentUser?.organizationId);
+    return mapped || organizations[0] || {
       id: "org-1",
       name: "Emaar Holdings",
       industry: "Real Estate Development",
@@ -24,19 +26,35 @@ export default function OrganizationPage() {
       employees: 8500,
       revenue: "$3.5B",
       type: "Public",
+      contactPerson: "Sarah Malik",
+      email: "sarah.malik@emaarproperties.com",
     };
-  }, [organizations]);
+  }, [organizations, currentUser]);
 
   // Form editable states
-  const [orgName, setOrgName] = useState(activeOrg.name);
-  const [industry, setIndustry] = useState(activeOrg.industry);
-  const [country, setCountry] = useState(activeOrg.country);
-  const [employees, setEmployees] = useState(String(activeOrg.employees));
-  const [revenue, setRevenue] = useState(activeOrg.revenue);
-  const [orgType, setOrgType] = useState(activeOrg.type);
-  const [contact, setContact] = useState("Sarah Malik");
-  const [email, setEmail] = useState("sarah.malik@emaar.example");
-  
+  const [orgName, setOrgName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [country, setCountry] = useState("");
+  const [employees, setEmployees] = useState("");
+  const [revenue, setRevenue] = useState("");
+  const [orgType, setOrgType] = useState("");
+  const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
+
+  // Sync inputs on activeOrg load
+  useEffect(() => {
+    if (activeOrg) {
+      setOrgName(activeOrg.name);
+      setIndustry(activeOrg.industry);
+      setCountry(activeOrg.country);
+      setEmployees(String(activeOrg.employees));
+      setRevenue(activeOrg.revenue);
+      setOrgType(activeOrg.type);
+      setContact(activeOrg.contactPerson || "");
+      setEmail(activeOrg.email || "");
+    }
+  }, [activeOrg]);
+
   // Documents Management
   const [documents, setDocuments] = useState([
     { name: "Strategic Plan 2026-2030.pdf", size: "4.2 MB", date: "2026-01-14", status: "Verified" },
@@ -57,6 +75,8 @@ export default function OrganizationPage() {
       employees: parseInt(employees) || 0,
       revenue,
       type: orgType,
+      contactPerson: contact,
+      email,
     });
     toast.success("Organization profile updated successfully!");
   };
@@ -101,7 +121,7 @@ export default function OrganizationPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
               <div>
-                <Label className="text-xs font-semibold text-muted-foreground">Company Name</Label>
+                <Label className="text-xs font-semibold text-muted-foreground">Organization Name</Label>
                 <Input className="mt-1.5" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
               </div>
               <div>
@@ -113,7 +133,7 @@ export default function OrganizationPage() {
                 <Input className="mt-1.5" value={country} onChange={(e) => setCountry(e.target.value)} />
               </div>
               <div>
-                <Label className="text-xs font-semibold text-muted-foreground">Company Type</Label>
+                <Label className="text-xs font-semibold text-muted-foreground">Organization Type</Label>
                 <Input className="mt-1.5" value={orgType} onChange={(e) => setOrgType(e.target.value)} />
               </div>
               <div>
@@ -173,7 +193,7 @@ export default function OrganizationPage() {
                   </span>
                   <button 
                     onClick={() => handleDeleteDocument(d.name)}
-                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-rose-600 transition shrink-0"
+                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-rose-600 transition shrink-0 animate-fade-in"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

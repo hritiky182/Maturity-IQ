@@ -9,7 +9,12 @@ import {
   Recommendation,
   RoadmapItem,
   Organization,
-  DEPARTMENT_DEFS,
+  INDUSTRY_TEMPLATES,
+  FUNCTION_DEFS,
+  MOCK_ORGANIZATIONS,
+  MOCK_ASSESSMENTS,
+  MOCK_RECOMMENDATIONS,
+  MOCK_ROADMAP,
 } from "./mock-data";
 
 // Detailed interface for Answers
@@ -17,6 +22,37 @@ export interface Answer {
   score: number;
   comment: string;
   evidence: string[]; // Mock file names
+}
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  password?: string;
+  role: "Admin" | "Organization User";
+  organizationId: string | null;
+}
+
+export interface OnboardingState {
+  step: number;
+  accountInfo: {
+    fullName: string;
+    email: string;
+    password?: string;
+  } | null;
+  orgInfo: {
+    name: string;
+    industry: string;
+    country: string;
+    employees: string;
+    revenue: string;
+    type: string;
+    contactPerson: string;
+    phone: string;
+  } | null;
+  selectedFunctions: string[];
+  answers: Record<string, Answer>; // questionId -> Answer (temporary answers answered during onboarding)
+  evidence: string[]; // Mock file names uploaded during onboarding
 }
 
 export interface AppState {
@@ -28,9 +64,15 @@ export interface AppState {
   roadmap: RoadmapItem[];
   currentAssessmentId: string | null;
 
+  // Authentication & Roles
+  users: User[];
+  currentUser: User | null;
+  onboardingState: OnboardingState;
+
   // Actions
   setOrganizations: (orgs: Organization[]) => void;
   updateOrganization: (id: string, updates: Partial<Organization>) => void;
+  addOrganization: (org: Omit<Organization, "id">) => string;
   
   createAssessment: (assessment: Omit<Assessment, "id" | "createdAt" | "updatedAt" | "overallScore" | "completion">) => string;
   updateAssessment: (id: string, updates: Partial<Assessment>) => void;
@@ -48,15 +90,16 @@ export interface AppState {
   setCurrentAssessmentId: (id: string | null) => void;
   regenerateRecommendations: (assessmentId: string) => void;
   resetAllData: () => void;
+
+  // Onboarding Actions
+  setOnboardingState: (updates: Partial<OnboardingState>) => void;
+  resetOnboardingState: () => void;
+  loginUser: (email: string, password: string) => boolean;
+  logoutUser: () => void;
+  registerOnboardingUser: () => boolean;
 }
 
-// Deterministic random generator based on a seed
-function seededRandom(seed: number) {
-  const x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-// Generate the 300 questions (12 departments * 5 sections * 5 questions)
+// Generate the 1000 master questions (5 templates * 8 functions * 5 sections * 5 questions)
 export function generateMasterQuestions(): Question[] {
   const questions: Question[] = [];
   const questionTypes: Question["type"][] = ["rating", "yesno", "single", "multi", "text"];
@@ -72,7 +115,7 @@ export function generateMasterQuestions(): Question[] {
       desc: "Assess if a structured methodology, policy, or framework has been officially approved and published.",
     },
     {
-      text: "Are roles, responsibilities, and ownership clearly assigned for {section} operations?",
+      text: "Are roles, responsibilities, and execution ownership clearly assigned for {section} operations?",
       desc: "Determine if staff are aware of their responsibilities and if key performance indicators are aligned.",
     },
     {
@@ -89,133 +132,68 @@ export function generateMasterQuestions(): Question[] {
     },
   ];
 
-  DEPARTMENT_DEFS.forEach((d) => {
-    d.sections.forEach((sectName, sIdx) => {
-      for (let qIdx = 0; qIdx < 5; qIdx++) {
-        const id = `${d.id}-s${sIdx}-q${qIdx}`;
-        const type = questionTypes[qIdx];
-        const template = questionTemplates[qIdx];
-        const text = template.text.replace("{section}", sectName);
-        
-        questions.push({
-          id,
-          text,
-          description: template.desc.replace("{section}", sectName),
-          type,
-          score: 0, // Master templates have 0 score, actual scores are in answers
-          choices: choicesMap[type] || undefined,
-        });
-      }
+  INDUSTRY_TEMPLATES.forEach((temp) => {
+    temp.functions.forEach((f) => {
+      f.sections.forEach((sectName, sIdx) => {
+        for (let qIdx = 0; qIdx < 5; qIdx++) {
+          const id = `${temp.id}-${f.id}-s${sIdx}-q${qIdx}`;
+          const type = questionTypes[qIdx];
+          const template = questionTemplates[qIdx];
+          const text = template.text.replace("{section}", sectName);
+          
+          questions.push({
+            id,
+            text,
+            description: template.desc.replace("{section}", sectName),
+            type,
+            score: 0,
+            choices: choicesMap[type] || undefined,
+          });
+        }
+      });
     });
   });
 
   return questions;
 }
 
-// Generate 50 Organizations
-const COMPANIES = [
-  "Emaar Holdings", "Dar Al Arkan", "DAMAC Properties", "Nakheel Group", "Aldar Properties",
-  "Meraas", "Sobha Realty", "Deyaar Development", "Union Properties", "Azizi Developments",
-  "Ellington Properties", "Binghatti Developers", "Danube Properties", "Select Group", "Omniyat",
-  "MAG Property", "Reportage Properties", "Bloom Holding", "Modon Properties", "Imkan",
-  "Diyar Al Bahrain", "Kingdom Holding", "Roshn", "NHC Real Estate", "Retal Urban",
-  "Jabal Omar", "Red Sea Global", "Diriyah Company", "Qiddiya", "Wasl Asset Management",
-  "Dubai Holding", "Nakheel Properties", "Arada", "Al Futtaim Group", "Majid Al Futtaim",
-  "Sharjah Asset Management", "Diyar Al Muharraq", "Manazel Real Estate", "Eshraq Investments",
-  "RAK Properties", "Al Qudra Holding", "Amlak Finance", "Union Properties PJSC", "Deyaar PJSC",
-  "Aldar Investment", "Emaar Development", "Emaar Malls", "Damac Hills Corp", "Sobha Group", "Meraas Holding"
-];
-
-export function generateOrganizations(): Organization[] {
-  return Array.from({ length: 50 }, (_, i) => {
-    const name = COMPANIES[i] || `GCC Developer ${i + 1}`;
-    const country = ["UAE", "Saudi Arabia", "Qatar", "Kuwait", "Bahrain", "Oman"][i % 6];
-    const employees = 150 + Math.floor(seededRandom(i + 1) * 8000);
-    const revVal = 30 + Math.floor(seededRandom(i + 2) * 2500);
-    const revenue = revVal >= 1000 ? `$${(revVal / 1000).toFixed(1)}B` : `$${revVal}M`;
-    const type = ["Public", "Private", "Family Office", "Joint Venture"][i % 4];
-    return {
-      id: `org-${i + 1}`,
-      name,
-      industry: "Real Estate Development",
-      country,
-      employees,
-      revenue,
-      type,
-    };
-  });
-}
-
-// Seed 200 Assessments
-export function generateAssessments(orgs: Organization[]): {
-  assessments: Assessment[];
-  answers: Record<string, Record<string, Answer>>;
-} {
-  const assessments: Assessment[] = [];
+// Generate seeded answers for 40 preloaded assessments
+export function generateSeededAnswers(questions: Question[], assessments: Assessment[]): Record<string, Record<string, Answer>> {
   const answers: Record<string, Record<string, Answer>> = {};
-  const years = [2023, 2024, 2025, 2026];
-  const statuses: Assessment["status"][] = ["Draft", "In Progress", "Completed", "Submitted"];
   
-  // Master question list to calculate IDs
-  const masterQuestions = generateMasterQuestions();
-
-  for (let i = 0; i < 200; i++) {
-    const org = orgs[i % orgs.length];
-    const year = years[i % years.length];
-    const status = statuses[i % statuses.length];
-    const id = `ASM-${1000 + i}`;
-    
-    // Choose departments for this assessment
-    // For 200 assessments, we include all departments by default or a subset
-    const numDeps = 6 + (i % 7); // between 6 and 12
-    const selectedDeps = DEPARTMENT_DEFS.slice(0, numDeps).map((d) => d.id);
-    
-    // Create answers for this assessment
+  assessments.forEach((asm) => {
     const asmAnswers: Record<string, Answer> = {};
-    let totalScoreSum = 0;
-    let answeredCount = 0;
-    let totalQuestionsCount = 0;
-
-    masterQuestions.forEach((q) => {
-      // Find which department this question belongs to
-      const depId = q.id.split("-")[0];
-      if (selectedDeps.includes(depId)) {
-        totalQuestionsCount++;
-        
-        // Seed score based on deterministic random formula
+    const seed = parseInt(asm.id.replace("ASM-", "")) || 1000;
+    
+    questions.forEach((q) => {
+      const templId = q.id.split("-")[0];
+      const depId = q.id.split("-")[1];
+      
+      if (templId === asm.industry && asm.departments.includes(depId)) {
         let score = 0;
-        const comment = i % 10 === 0 ? "Initial process evaluation completed." : "";
-        const evidence: string[] = [];
+        let comment = "";
+        let evidence: string[] = [];
         
-        if (status === "Completed" || status === "Submitted") {
-          score = Math.max(1, Math.min(5, Math.round(2 + seededRandom(i * 10 + q.id.length) * 3)));
-          answeredCount++;
-          totalScoreSum += score;
-          
-          if (seededRandom(i + score) > 0.7) {
-            evidence.push(`Evidence_${depId}_${year}.pdf`);
+        if (asm.status === "Completed" || asm.status === "Submitted") {
+          const rand = Math.sin(seed + q.id.length) * 10000;
+          score = Math.max(1, Math.min(5, Math.round(2 + (rand - Math.floor(rand)) * 3)));
+          if ((rand - Math.floor(rand)) > 0.75) {
+            evidence.push(`Doc_${depId}_Verification.pdf`);
           }
-        } else if (status === "In Progress") {
-          // partially answered
-          const isAnswered = seededRandom(i * 5 + q.id.length) > 0.4;
+          if ((rand - Math.floor(rand)) > 0.85) {
+            comment = "Capability standards formally verified.";
+          }
+        } else if (asm.status === "In Progress") {
+          const rand = Math.sin(seed * 2 + q.id.length) * 10000;
+          const isAnswered = (rand - Math.floor(rand)) > 0.35;
           if (isAnswered) {
-            score = Math.max(1, Math.min(5, Math.round(2 + seededRandom(i * 15 + q.id.length) * 3)));
-            answeredCount++;
-            totalScoreSum += score;
-            if (seededRandom(i + score) > 0.8) {
-              evidence.push(`Evidence_${depId}_Draft.docx`);
+            score = Math.max(1, Math.min(5, Math.round(1 + (rand - Math.floor(rand)) * 4)));
+            if ((rand - Math.floor(rand)) > 0.85) {
+              evidence.push(`Draft_${depId}_Workflow.docx`);
             }
           }
-        } else {
-          // Draft: very few answered
-          const isAnswered = seededRandom(i * 3 + q.id.length) > 0.8;
-          if (isAnswered) {
-            score = Math.max(1, Math.min(5, Math.round(1 + seededRandom(i * 5 + q.id.length) * 4)));
-            answeredCount++;
-            totalScoreSum += score;
-          }
         }
-
+        
         asmAnswers[q.id] = {
           score,
           comment,
@@ -223,125 +201,85 @@ export function generateAssessments(orgs: Organization[]): {
         };
       }
     });
-
-    const completion = totalQuestionsCount ? Math.round((answeredCount / totalQuestionsCount) * 100) : 0;
-    const overallScore = answeredCount ? Number((totalScoreSum / answeredCount).toFixed(2)) : 0;
     
-    // Format dates
-    const month = String((i % 12) + 1).padStart(2, "0");
-    const day = String((i % 25) + 1).padStart(2, "0");
-    
-    assessments.push({
-      id,
-      name: `${year} Annual Maturity Review`,
-      company: org.name,
-      status,
-      createdAt: `${year - 1}-12-${day}`,
-      updatedAt: `${year}-${month}-${day}`,
-      overallScore,
-      completion,
-      year,
-      departments: selectedDeps,
-    });
+    answers[asm.id] = asmAnswers;
+  });
 
-    answers[id] = asmAnswers;
-  }
-
-  return { assessments, answers };
+  return answers;
 }
 
-// Generate 100 Recommendations
-export function generateRecommendations(): Recommendation[] {
-  const recommendations: Recommendation[] = [];
-  const priorities: Recommendation["priority"][] = ["Critical", "High", "Medium", "Low"];
-  const impacts: Recommendation["impact"][] = ["High", "Medium", "Low"];
-  const timelines = ["0-3 months", "3-6 months", "6-12 months", "12-18 months"];
+const initialQuestions = generateMasterQuestions();
+const initialAnswers = generateSeededAnswers(initialQuestions, MOCK_ASSESSMENTS);
 
-  const templates = [
-    { title: "Define formal KPI metrics and reporting dashboards", desc: "Introduce a central dashboard to track operational milestones and performance monthly." },
-    { title: "Standardize contractor SLAs and penalty frameworks", desc: "Draft a standardized vendor contracting policy with clear milestone penalties and review procedures." },
-    { title: "Incorporate BIM and digital twin protocols in project initiation", desc: "Upgrade structural design standards to enforce building information modeling across all JV developments." },
-    { title: "Conduct enterprise cybersecurity penetration testing", desc: "Schedule an external audit of consumer-facing billing portals and internal database configurations." },
-    { title: "Establish an executive risk committee and ERM register", desc: "Initiate quarterly risk reporting covering currency hedging, material inflation, and regulatory changes." },
-    { title: "Implement contract lifecycle management software", desc: "Reduce review bottlenecks in joint-venture contracts through automated legal routing and approval systems." },
-    { title: "Deploy mobile CRM for broker network enablement", desc: "Improve lead response time and listing visibility through a specialized field agent application." },
-    { title: "Formulate NPS customer feedback loops for post-handover", desc: "Collect customer satisfaction data at key milestones: sales agreement, key handover, and defect liability." },
-    { title: "Establish category management and bulk purchasing hubs", desc: "Consolidate procurement of steel, cement, and MEP finishes to extract volume discounts." },
-    { title: "Launch leadership training and succession plans", desc: "Create a fast-track program for high-potential project managers to secure key engineering roles." },
+// Generate seed users
+function generateSeedUsers(): User[] {
+  const users: User[] = [
+    {
+      id: "u-admin",
+      fullName: "System Administrator",
+      email: "admin@maturityiq.com",
+      password: "admin123",
+      role: "Admin",
+      organizationId: null,
+    },
   ];
 
-  for (let i = 0; i < 100; i++) {
-    const templ = templates[i % templates.length];
-    const depDef = DEPARTMENT_DEFS[i % DEPARTMENT_DEFS.length];
-    const priority = priorities[i % 4];
-    const impact = impacts[i % 3];
-    const timeline = timelines[i % 4];
-
-    recommendations.push({
-      id: `REC-${100 + i}`,
-      title: `${depDef.name}: ${templ.title}`,
-      description: templ.desc,
-      priority,
-      impact,
-      timeline,
-      department: depDef.name,
+  MOCK_ORGANIZATIONS.forEach((org, idx) => {
+    users.push({
+      id: `u-${org.id}`,
+      fullName: org.contactPerson || "Contact Person",
+      email: org.email || `contact@${org.id}.com`,
+      password: "password123",
+      role: "Organization User",
+      organizationId: org.id,
     });
-  }
+  });
 
-  return recommendations;
+  return users;
 }
 
-// Generate 50 Roadmap Items
-export function generateRoadmapItems(recs: Recommendation[]): RoadmapItem[] {
-  const roadmap: RoadmapItem[] = [];
-  const owners = ["Sarah Malik", "Ahmed Al Nuaimi", "Karim Haddad", "Layla Farouk", "Omar Zaidan", "Noor Khoury", "Zayd Al Maktoum", "Fatima Al Ghaith"];
-  const quarters: RoadmapItem["quarter"][] = ["Q1", "Q2", "Q3", "Q4"];
-  const statuses: RoadmapItem["status"][] = ["Not Started", "In Progress", "On Hold", "Completed"];
-
-  for (let i = 0; i < 50; i++) {
-    const rec = recs[i % recs.length];
-    const status = statuses[i % 4];
-    const progress = status === "Completed" ? 100 : status === "Not Started" ? 0 : 15 + (i * 13) % 70;
-
-    roadmap.push({
-      id: `INI-${200 + i}`,
-      initiative: rec.title,
-      priority: rec.priority,
-      owner: owners[i % owners.length],
-      timeline: rec.timeline,
-      quarter: quarters[i % 4],
-      status,
-      progress,
-      department: rec.department,
-    });
-  }
-
-  return roadmap;
-}
-
-// Initialize seed data
-const seededOrgs = generateOrganizations();
-const seededQuestions = generateMasterQuestions();
-const { assessments: seededAsms, answers: seededAnswers } = generateAssessments(seededOrgs);
-const seededRecs = generateRecommendations();
-const seededRoadmap = generateRoadmapItems(seededRecs);
+const initialOnboardingState: OnboardingState = {
+  step: 0,
+  accountInfo: null,
+  orgInfo: null,
+  selectedFunctions: [],
+  answers: {},
+  evidence: [],
+};
 
 export const useStore = create<AppState>()(
   persist(
     (set, get) => ({
-      organizations: seededOrgs,
-      assessments: seededAsms,
-      answers: seededAnswers,
-      questions: seededQuestions,
-      recommendations: seededRecs,
-      roadmap: seededRoadmap,
+      organizations: MOCK_ORGANIZATIONS,
+      assessments: MOCK_ASSESSMENTS,
+      answers: initialAnswers,
+      questions: initialQuestions,
+      recommendations: MOCK_RECOMMENDATIONS,
+      roadmap: MOCK_ROADMAP,
       currentAssessmentId: null,
+
+      // Authentication & Roles
+      users: generateSeedUsers(),
+      currentUser: null,
+      onboardingState: initialOnboardingState,
 
       setOrganizations: (orgs) => set({ organizations: orgs }),
       
       updateOrganization: (id, updates) => set((state) => ({
         organizations: state.organizations.map((org) => org.id === id ? { ...org, ...updates } : org)
       })),
+
+      addOrganization: (orgData) => {
+        const id = `org-${get().organizations.length + 1}`;
+        const newOrg: Organization = {
+          ...orgData,
+          id,
+        };
+        set((state) => ({
+          organizations: [...state.organizations, newOrg]
+        }));
+        return id;
+      },
 
       createAssessment: (assessmentData) => {
         const id = `ASM-${1000 + get().assessments.length}`;
@@ -354,11 +292,12 @@ export const useStore = create<AppState>()(
           completion: 0,
         };
 
-        // Create empty answer structures for each question in chosen departments
+        // Create empty answer structures for chosen template + functions
         const asmAnswers: Record<string, Answer> = {};
         get().questions.forEach((q) => {
-          const depId = q.id.split("-")[0];
-          if (assessmentData.departments.includes(depId)) {
+          const templId = q.id.split("-")[0];
+          const depId = q.id.split("-")[1];
+          if (templId === assessmentData.industry && assessmentData.departments.includes(depId)) {
             asmAnswers[q.id] = { score: 0, comment: "", evidence: [] };
           }
         });
@@ -418,7 +357,7 @@ export const useStore = create<AppState>()(
           },
         };
 
-        // Trigger score update after modifying answer
+        // Trigger score updates
         setTimeout(() => get().calculateAndSetScores(assessmentId), 0);
 
         return { answers: updatedAnswers };
@@ -434,7 +373,6 @@ export const useStore = create<AppState>()(
           },
         };
 
-        // Trigger score update
         setTimeout(() => get().calculateAndSetScores(assessmentId), 0);
 
         return { answers: updatedAnswers };
@@ -450,8 +388,9 @@ export const useStore = create<AppState>()(
         let totalQuestionsCount = 0;
 
         get().questions.forEach((q) => {
-          const depId = q.id.split("-")[0];
-          if (asm.departments.includes(depId)) {
+          const templId = q.id.split("-")[0];
+          const depId = q.id.split("-")[1];
+          if (templId === asm.industry && asm.departments.includes(depId)) {
             totalQuestionsCount++;
             const ans = asmAnswers[q.id];
             if (ans && ans.score > 0) {
@@ -466,7 +405,7 @@ export const useStore = create<AppState>()(
         
         let status = asm.status;
         if (completion === 100 && status !== "Completed" && status !== "Submitted") {
-          status = "In Progress";
+          status = "Submitted"; // auto submit on 100% completion for onboarding flow
         } else if (completion > 0 && status === "Draft") {
           status = "In Progress";
         }
@@ -504,13 +443,14 @@ export const useStore = create<AppState>()(
         const asmAnswers = get().answers[assessmentId] || {};
         const lowScoreDeps: string[] = [];
 
-        // Check each department's average score
-        DEPARTMENT_DEFS.forEach((d) => {
-          if (asm.departments.includes(d.id)) {
+        // Check each function's average score from the active template
+        const template = INDUSTRY_TEMPLATES.find((t) => t.id === asm.industry) || INDUSTRY_TEMPLATES[0];
+        template.functions.forEach((f) => {
+          if (asm.departments.includes(f.id)) {
             let depSum = 0;
             let depCount = 0;
             get().questions.forEach((q) => {
-              if (q.id.startsWith(d.id)) {
+              if (q.id.startsWith(`${asm.industry}-${f.id}-`)) {
                 const ans = asmAnswers[q.id];
                 if (ans && ans.score > 0) {
                   depSum += ans.score;
@@ -520,32 +460,149 @@ export const useStore = create<AppState>()(
             });
             const depAvg = depCount ? depSum / depCount : 0;
             if (depAvg > 0 && depAvg < 3.2) {
-              lowScoreDeps.push(d.name);
+              lowScoreDeps.push(f.name);
             }
           }
         });
 
-        // Filter and regenerate recommendations linked to these low score departments
-        const allRecs = generateRecommendations();
-        const relevantRecs = allRecs.filter((r) => lowScoreDeps.includes(r.department));
+        // Filter recommendations linked to low score departments
+        const relevantRecs = MOCK_RECOMMENDATIONS.filter((r) => lowScoreDeps.includes(r.department));
 
         set((state) => ({
-          // Overwrite first 20 recommendations with the fresh ones for this assessment
           recommendations: [...relevantRecs.slice(0, 15), ...state.recommendations.filter(r => !lowScoreDeps.includes(r.department))].slice(0, 100)
         }));
       },
 
       resetAllData: () => {
         localStorage.removeItem("maturity-assessment-storage");
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("userRole");
         set({
-          organizations: seededOrgs,
-          assessments: seededAsms,
-          answers: seededAnswers,
-          questions: seededQuestions,
-          recommendations: seededRecs,
-          roadmap: seededRoadmap,
+          organizations: MOCK_ORGANIZATIONS,
+          assessments: MOCK_ASSESSMENTS,
+          answers: initialAnswers,
+          questions: initialQuestions,
+          recommendations: MOCK_RECOMMENDATIONS,
+          roadmap: MOCK_ROADMAP,
           currentAssessmentId: null,
+          currentUser: null,
+          users: generateSeedUsers(),
+          onboardingState: initialOnboardingState,
         });
+      },
+
+      setOnboardingState: (updates) => set((state) => ({
+        onboardingState: { ...state.onboardingState, ...updates }
+      })),
+
+      resetOnboardingState: () => set({ onboardingState: initialOnboardingState }),
+
+      loginUser: (email, password) => {
+        const user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+        if (user) {
+          set({ currentUser: user });
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("userRole", user.role);
+          return true;
+        }
+        return false;
+      },
+
+      logoutUser: () => {
+        set({ currentUser: null });
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("userRole");
+      },
+
+      registerOnboardingUser: () => {
+        const { accountInfo, orgInfo, selectedFunctions, answers } = get().onboardingState;
+        if (!accountInfo || !orgInfo) return false;
+
+        // 1. Create Organization
+        const orgId = `org-${get().organizations.length + 1}`;
+        const newOrg: Organization = {
+          id: orgId,
+          name: orgInfo.name,
+          industry: orgInfo.industry,
+          country: orgInfo.country,
+          employees: parseInt(orgInfo.employees) || 100,
+          revenue: orgInfo.revenue,
+          type: orgInfo.type,
+          contactPerson: orgInfo.contactPerson,
+          email: accountInfo.email,
+          phone: orgInfo.phone,
+          assessmentYear: 2026,
+        };
+
+        // 2. Create User
+        const userId = `u-${orgId}`;
+        const newUser: User = {
+          id: userId,
+          fullName: accountInfo.fullName,
+          email: accountInfo.email,
+          password: accountInfo.password || "password123",
+          role: "Organization User",
+          organizationId: orgId,
+        };
+
+        // 3. Create Assessment
+        const asmId = `ASM-${1000 + get().assessments.length}`;
+        let industryTemplateId = "general";
+        if (orgInfo.industry === "Real Estate") industryTemplateId = "realestate";
+        else if (orgInfo.industry === "Healthcare") industryTemplateId = "healthcare";
+        else if (orgInfo.industry === "Government") industryTemplateId = "government";
+        else if (orgInfo.industry === "Education") industryTemplateId = "education";
+
+        const newAsm: Assessment = {
+          id: asmId,
+          name: "2026 Capability Assessment",
+          company: orgInfo.name,
+          status: "Submitted", // complete the assessment during registration
+          createdAt: new Date().toISOString().split("T")[0],
+          updatedAt: new Date().toISOString().split("T")[0],
+          overallScore: 0,
+          completion: 100,
+          year: 2026,
+          industry: industryTemplateId,
+          departments: selectedFunctions,
+          sponsor: orgInfo.contactPerson,
+          contactPerson: orgInfo.contactPerson,
+          email: accountInfo.email,
+          phone: orgInfo.phone,
+        };
+
+        // Convert onboarding answers
+        const asmAnswers: Record<string, Answer> = {};
+        // Master list questions matching the industry and functions
+        get().questions.forEach((q) => {
+          const templId = q.id.split("-")[0];
+          const depId = q.id.split("-")[1];
+          if (templId === industryTemplateId && selectedFunctions.includes(depId)) {
+            asmAnswers[q.id] = answers[q.id] || { score: 3, comment: "Initial onboarding evaluation.", evidence: [] };
+          }
+        });
+
+        // 4. Update Store State
+        set((state) => ({
+          organizations: [...state.organizations, newOrg],
+          users: [...state.users, newUser],
+          assessments: [newAsm, ...state.assessments],
+          answers: { ...state.answers, [asmId]: asmAnswers },
+          currentUser: newUser,
+          currentAssessmentId: asmId,
+        }));
+
+        // Trigger score updates & recommendations
+        get().calculateAndSetScores(asmId);
+        get().regenerateRecommendations(asmId);
+
+        // Login user
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userRole", "Organization User");
+
+        // Clear onboarding state
+        get().resetOnboardingState();
+        return true;
       },
     }),
     {

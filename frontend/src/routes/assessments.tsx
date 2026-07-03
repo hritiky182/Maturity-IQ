@@ -22,10 +22,25 @@ export default function AssessmentsPage() {
   const deleteAssessment = useStore((state) => state.deleteAssessment);
   const duplicateAssessment = useStore((state) => state.duplicateAssessment);
   const setCurrentAssessmentId = useStore((state) => state.setCurrentAssessmentId);
+  const currentUser = useStore((state) => state.currentUser);
+  const organizations = useStore((state) => state.organizations);
+
+  const userRole = localStorage.getItem("userRole") || "Organization User";
+
+  // Filter assessments based on User role and their organization mapping
+  const scopeAssessments = useMemo(() => {
+    if (userRole === "Admin") return assessments;
+    
+    // Find matching organization for current user
+    const userOrg = organizations.find((o) => o.id === currentUser?.organizationId);
+    if (!userOrg) return [];
+    
+    return assessments.filter((a) => a.company.toLowerCase() === userOrg.name.toLowerCase());
+  }, [assessments, currentUser, organizations, userRole]);
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
-  const [department, setDepartment] = useState("all");
+  const [functionFilter, setFunctionFilter] = useState("all");
   const [year, setYear] = useState("all");
   const [sortBy, setSortBy] = useState("updatedAt-desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,12 +48,12 @@ export default function AssessmentsPage() {
 
   // Filtered rows
   const filteredRows = useMemo(() => {
-    return assessments.filter((a) => {
+    return scopeAssessments.filter((a) => {
       // Status filter
       if (status !== "all" && a.status !== status) return false;
       
-      // Department filter
-      if (department !== "all" && !a.departments.includes(department)) return false;
+      // Function filter
+      if (functionFilter !== "all" && !a.departments.includes(functionFilter)) return false;
       
       // Year filter
       if (year !== "all" && String(a.year) !== year) return false;
@@ -53,7 +68,7 @@ export default function AssessmentsPage() {
       }
       return true;
     });
-  }, [assessments, q, status, department, year]);
+  }, [scopeAssessments, q, status, functionFilter, year]);
 
   // Sorted rows
   const sortedRows = useMemo(() => {
@@ -97,7 +112,7 @@ export default function AssessmentsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this assessment?")) {
+    if (confirm("Are you sure you want to delete this organizational assessment?")) {
       deleteAssessment(id);
       toast.success("Assessment deleted successfully");
     }
@@ -131,12 +146,14 @@ export default function AssessmentsPage() {
 
   return (
     <PageShell
-      title="Assessments"
-      description="Manage organizational maturity assessments across your portfolio companies."
+      title="Assessments History"
+      description="Compare previous assessments and track organizational maturity improvement over time."
       actions={
-        <Button asChild>
-          <Link to="/assessments/new"><Plus className="h-4 w-4 mr-1" /> Create assessment</Link>
-        </Button>
+        userRole === "Admin" ? (
+          <Button asChild>
+            <Link to="/assessments/new"><Plus className="h-4 w-4 mr-1" /> Create assessment</Link>
+          </Button>
+        ) : undefined
       }
     >
       <div className="rounded-2xl border border-border bg-card shadow-sm">
@@ -144,7 +161,7 @@ export default function AssessmentsPage() {
           <div className="relative flex-1 min-w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search by name, company, ID…" 
+              placeholder="Search by name, organization, ID…" 
               value={q} 
               onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }} 
               className="pl-9" 
@@ -162,17 +179,18 @@ export default function AssessmentsPage() {
             </SelectContent>
           </Select>
 
-          <Select value={department} onValueChange={(val) => { setDepartment(val); setCurrentPage(1); }}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="All Departments" /></SelectTrigger>
+          <Select value={functionFilter} onValueChange={(val) => { setFunctionFilter(val); setCurrentPage(1); }}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="All Business Functions" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All departments</SelectItem>
+              <SelectItem value="all">All business functions</SelectItem>
               <SelectItem value="strategy">Strategy</SelectItem>
               <SelectItem value="hr">Human Resources</SelectItem>
               <SelectItem value="innovation">Innovation</SelectItem>
-              <SelectItem value="it">IT</SelectItem>
+              <SelectItem value="it">Information Technology</SelectItem>
               <SelectItem value="legal">Legal & Compliance</SelectItem>
+              <SelectItem value="risk">Risk Management</SelectItem>
               <SelectItem value="operations">Operations</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="pm">Project Management</SelectItem>
             </SelectContent>
           </Select>
 
@@ -206,7 +224,7 @@ export default function AssessmentsPage() {
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground bg-muted/40">
                 <th className="px-4 py-3 font-medium">ID</th>
                 <th className="px-4 py-3 font-medium">Assessment</th>
-                <th className="px-4 py-3 font-medium">Company</th>
+                <th className="px-4 py-3 font-medium">Organization</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 font-medium">Progress</th>
                 <th className="px-4 py-3 font-medium">Score</th>
@@ -220,7 +238,7 @@ export default function AssessmentsPage() {
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{a.id}</td>
                   <td className="px-4 py-3">
                     <div className="font-medium text-foreground">{a.name}</div>
-                    <div className="text-xs text-muted-foreground">{a.departments.length} departments · FY {a.year}</div>
+                    <div className="text-xs text-muted-foreground">{a.departments.length} functions · FY {a.year}</div>
                   </td>
                   <td className="px-4 py-3 text-foreground">{a.company}</td>
                   <td className="px-4 py-3">
@@ -251,28 +269,28 @@ export default function AssessmentsPage() {
                     <div className="flex items-center gap-1 justify-end text-muted-foreground">
                       <button 
                         onClick={() => handleView(a.id)}
-                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition" 
+                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition cursor-pointer" 
                         title="View Report"
                       >
                         <Eye className="h-3.5 w-3.5" />
                       </button>
                       <button 
                         onClick={() => handleContinue(a.id)}
-                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition" 
+                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition cursor-pointer" 
                         title={a.status === "Completed" || a.status === "Submitted" ? "Review Flow" : "Continue Assessment"}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </button>
                       <button 
                         onClick={() => handleDuplicate(a.id)}
-                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition" 
+                        className="p-1.5 rounded hover:bg-muted hover:text-foreground transition cursor-pointer" 
                         title="Duplicate"
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
                       <button 
                         onClick={() => handleDelete(a.id)}
-                        className="p-1.5 rounded hover:bg-muted hover:text-rose-600 transition" 
+                        className="p-1.5 rounded hover:bg-muted hover:text-rose-600 transition cursor-pointer" 
                         title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -280,7 +298,7 @@ export default function AssessmentsPage() {
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 rounded hover:bg-muted hover:text-foreground transition">
+                          <button className="p-1.5 rounded hover:bg-muted hover:text-foreground transition cursor-pointer">
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </button>
                         </DropdownMenuTrigger>
@@ -305,7 +323,7 @@ export default function AssessmentsPage() {
         </div>
 
         <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          <div>Showing {Math.min(sortedRows.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(sortedRows.length, currentPage * itemsPerPage)} of {sortedRows.length} matches ({assessments.length} total)</div>
+          <div>Showing {Math.min(sortedRows.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(sortedRows.length, currentPage * itemsPerPage)} of {sortedRows.length} matches ({scopeAssessments.length} total)</div>
           <div className="flex items-center gap-2">
             <Button 
               variant="outline" 

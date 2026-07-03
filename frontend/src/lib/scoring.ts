@@ -1,5 +1,5 @@
 import type { Department, MaturityLevel, Section } from "./mock-data";
-import { DEPARTMENT_DEFS } from "./mock-data";
+import { INDUSTRY_TEMPLATES } from "./mock-data";
 import { useStore } from "./store";
 
 export function getAssessmentDepartments(assessmentId: string): Department[] {
@@ -8,16 +8,17 @@ export function getAssessmentDepartments(assessmentId: string): Department[] {
   if (!assessment) return [];
 
   const asmAnswers = state.answers[assessmentId] || {};
+  const template = INDUSTRY_TEMPLATES.find((t) => t.id === assessment.industry) || INDUSTRY_TEMPLATES[0];
 
-  return DEPARTMENT_DEFS.filter((d) => assessment.departments.includes(d.id)).map((d) => {
+  return template.functions.filter((f) => assessment.departments.includes(f.id)).map((f) => {
     return {
-      id: d.id,
-      name: d.name,
-      icon: d.icon,
-      sections: d.sections.map((sname, si) => {
-        const sectionId = `${d.id}-s${si}`;
+      id: f.id,
+      name: f.name,
+      icon: f.icon,
+      sections: f.sections.map((sname, si) => {
+        const sectionId = `${f.id}-s${si}`;
         const sectionQuestions = state.questions
-          .filter((q) => q.id.startsWith(`${d.id}-s${si}-`))
+          .filter((q) => q.id.startsWith(`${assessment.industry}-${f.id}-s${si}-`))
           .map((q) => {
             const ans = asmAnswers[q.id] || { score: 0, comment: "", evidence: [] };
             return {

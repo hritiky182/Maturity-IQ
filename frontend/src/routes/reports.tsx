@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 const REPORTS = [
   { title: "Executive Summary", desc: "Board-ready summary of maturity results and strategic imperatives.", tag: "12 pages", color: "from-blue-500 to-indigo-600" },
-  { title: "Department Scorecard", desc: "Detailed section-level performance across all 12 departments.", tag: "28 pages", color: "from-emerald-500 to-teal-600" },
+  { title: "Business Function Scorecard", desc: "Detailed section-level performance across all business functions.", tag: "28 pages", color: "from-emerald-500 to-teal-600" },
   { title: "Gap Analysis Report", desc: "Current vs target state with prioritized gap closure roadmap.", tag: "18 pages", color: "from-orange-500 to-rose-600" },
   { title: "Recommendations Report", desc: "24 prioritized initiatives with impact and effort estimates.", tag: "22 pages", color: "from-violet-500 to-fuchsia-600" },
   { title: "Improvement Roadmap Report", desc: "Quarterly execution plan with owners and dependencies.", tag: "16 pages", color: "from-amber-500 to-orange-600" },
@@ -163,7 +163,7 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="rounded-lg bg-muted/50 p-4 border border-border/40">
-                <div className="text-xs text-muted-foreground">Departments Assessed</div>
+                <div className="text-xs text-muted-foreground">Functions Assessed</div>
                 <div className="text-2xl font-bold mt-1 text-foreground">{activeDeps.filter(d => departmentScore(d) > 0).length} / {activeDeps.length}</div>
               </div>
             </div>
@@ -171,15 +171,15 @@ export default function ReportsPage() {
             <div className="space-y-3">
               <h2 className="text-lg font-bold text-foreground">Executive Summary</h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {activeAsm.company} demonstrates a maturity profile consistent with a transitioning real estate
-                entity moving from an ad-hoc operating model to a standard platform model. Strengths in key operational
+                {activeAsm.company} demonstrates a maturity profile consistent with a transitioning enterprise
+                moving from an ad-hoc operating model to a standard platform model. Strengths in key operational
                 parameters are contrasted by gaps in technology integration, customer experience, and systematic innovation.
                 Initiating the recommended 12-month roadmap initiatives is highly advised to optimize organizational output.
               </p>
             </div>
 
             <div className="space-y-3 pt-4 border-t border-border">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Top Performing Departments</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Top Performing Business Functions</h3>
               <table className="w-full text-sm">
                 <tbody>
                   {topDepartments.map((d) => (
@@ -194,7 +194,7 @@ export default function ReportsPage() {
                     </tr>
                   ))}
                   {!topDepartments.length && (
-                    <tr><td colSpan={3} className="py-4 text-center text-xs text-muted-foreground italic">No departments assessed yet.</td></tr>
+                    <tr><td colSpan={3} className="py-4 text-center text-xs text-muted-foreground italic">No business functions assessed yet.</td></tr>
                   )}
                 </tbody>
               </table>
