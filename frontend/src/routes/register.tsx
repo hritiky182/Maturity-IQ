@@ -395,7 +395,7 @@ export default function RegisterPage() {
                     <span className={cn(
                       "absolute -left-[23px] flex h-4 w-4 items-center justify-center rounded-full border text-[9px] font-bold",
                       done ? "bg-emerald-500 border-emerald-500 text-white" :
-                      active ? "bg-white border-white text-primary" : "bg-primary border-white/30 text-white/50"
+                        active ? "bg-white border-white text-primary" : "bg-primary border-white/30 text-white/50"
                     )}>
                       {done ? <Check className="h-2.5 w-2.5" /> : idx + 1}
                     </span>
@@ -437,7 +437,7 @@ export default function RegisterPage() {
           onboarding.step === 3 ? "max-w-6xl" : "max-w-4xl"
         )}>
           <div className="bg-card border border-border rounded-2xl shadow-sm p-8">
-            
+
             {/* STEP 1: ACCOUNT INFORMATION */}
             {onboarding.step === 0 && (
               <div className="space-y-6">
@@ -590,9 +590,9 @@ export default function RegisterPage() {
                     <h3 className="text-lg font-bold text-foreground">Step 4: Onboarding Capability Questionnaire</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">Answer the operational baseline capability questions across your selected business functions.</p>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/40">
+                  {/* <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 px-3 py-1.5 rounded-full border border-emerald-100 dark:border-emerald-900/40">
                     <Check className="h-3.5 w-3.5" /> <span>Saved</span>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Score Summary Metrics */}
@@ -622,13 +622,13 @@ export default function RegisterPage() {
                           const def = FUNCTION_DEFS.find((f) => f.id === fId);
                           if (!def) return null;
                           const active = fId === activeFuncId;
-                          
+
                           // Count answered in this function
                           const tempId = getTemplateIdForIndustry(industry);
                           const fQuestions = questions.filter(q => q.id.startsWith(`${tempId}-${fId}-`));
                           const fAnswered = fQuestions.filter(q => onboarding.answers[q.id]?.score > 0).length;
                           const completion = fQuestions.length > 0 ? Math.round((fAnswered / fQuestions.length) * 100) : 0;
-                          
+
                           return (
                             <li key={fId}>
                               <button
@@ -661,7 +661,7 @@ export default function RegisterPage() {
                         <ul className="space-y-1 text-xs">
                           {activeFuncDef.sections.map((secName, sIdx) => {
                             const isSecActive = sIdx === activeSecIdx;
-                            
+
                             // Calculate average score for this section
                             const tempId = getTemplateIdForIndustry(industry);
                             const secQues = questions.filter((q) => q.id.startsWith(`${tempId}-${activeFuncDef.id}-s${sIdx}-`));
@@ -747,8 +747,8 @@ export default function RegisterPage() {
                                       onClick={() => handleAnswerScore(q.id, num)}
                                       className={cn(
                                         "h-9 w-9 rounded-lg border text-sm font-semibold transition cursor-pointer",
-                                        ans.score === num 
-                                          ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                                        ans.score === num
+                                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
                                           : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground bg-background"
                                       )}
                                     >
@@ -933,7 +933,7 @@ export default function RegisterPage() {
                       <div className="flex justify-between"><span className="text-muted-foreground">Questions Answered:</span><span className="font-semibold text-foreground">{answeredCount} of {totalQuestions}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Completion Rate:</span><span className="font-semibold text-foreground">{completionPercentage}%</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Average Baseline Score:</span><span className="font-semibold text-foreground">{averageScore} / 5.00</span></div>
-                      
+
                       <div className="pt-2 border-t border-border/60">
                         <Label className="text-[10px] font-semibold text-muted-foreground block mb-1">Scope of Functions</Label>
                         <div className="flex flex-wrap gap-1.5">
