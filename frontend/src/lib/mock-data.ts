@@ -266,7 +266,7 @@ export const MOCK_ORGANIZATIONS: Organization[] = Array.from({ length: 50 }, (_,
     revenue,
     type,
     contactPerson,
-    email: `${contactPerson.toLowerCase().replace(" ", ".")}@${name.toLowerCase().replace(/[^a-z0-9]/g, "") || "org"}.com`,
+    email: name === "Emaar Properties" ? "sarah.malik@maturityiq.com" : `${contactPerson.toLowerCase().replace(" ", ".")}@${name.toLowerCase().replace(/[^a-z0-9]/g, "") || "org"}.com`,
     phone: `+971 50 ${1000000 + (i * 78243) % 8999999}`,
     assessmentYear: 2026,
   };

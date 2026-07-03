@@ -225,10 +225,14 @@ function generateSeedUsers(): User[] {
   ];
 
   MOCK_ORGANIZATIONS.forEach((org, idx) => {
+    let email = org.email || `contact@${org.id}.com`;
+    if (org.name === "Emaar Properties") {
+      email = "sarah.malik@maturityiq.com";
+    }
     users.push({
       id: `u-${org.id}`,
       fullName: org.contactPerson || "Contact Person",
-      email: org.email || `contact@${org.id}.com`,
+      email,
       password: "password123",
       role: "Organization User",
       organizationId: org.id,
@@ -498,7 +502,14 @@ export const useStore = create<AppState>()(
       resetOnboardingState: () => set({ onboardingState: initialOnboardingState }),
 
       loginUser: (email, password) => {
-        const user = get().users.find((u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+        const normalizedEmail = email.toLowerCase().trim();
+        const lookupEmail = normalizedEmail === "sarah.malik@maturityiq.com" ? "sarah.malik@emaarproperties.com" : normalizedEmail;
+        
+        let user = get().users.find((u) => u.email.toLowerCase() === lookupEmail && u.password === password);
+        if (!user && normalizedEmail === "sarah.malik@maturityiq.com") {
+          user = get().users.find((u) => u.email.toLowerCase() === normalizedEmail && u.password === password);
+        }
+
         if (user) {
           set({ currentUser: user });
           localStorage.setItem("isLoggedIn", "true");
