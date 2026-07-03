@@ -128,7 +128,7 @@ export default function LoginPage() {
           </form>
 
           {/* TESTING CREDENTIALS HELPER */}
-          <div className="mt-4 p-3 bg-muted/40 border border-border rounded-lg space-y-2 text-xs">
+          {/* <div className="mt-4 p-3 bg-muted/40 border border-border rounded-lg space-y-2 text-xs">
             <div className="font-semibold text-foreground flex items-center gap-1.5">
               <Key className="h-3.5 w-3.5 text-primary" /> Test Accounts
             </div>
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 pass: <code className="bg-muted px-1 rounded">password123</code>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
