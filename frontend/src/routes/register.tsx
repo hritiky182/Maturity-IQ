@@ -362,7 +362,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-[400px_1fr] bg-background">
       {/* Onboarding Sidebar */}
-      <div className="hidden lg:flex flex-col justify-between p-8 bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between p-8 bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground relative overflow-hidden lg:sticky lg:top-0 lg:h-screen">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-white/40 blur-3xl" />
           <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-white/30 blur-3xl" />
@@ -614,7 +614,7 @@ export default function RegisterPage() {
                 {/* Main Questionnaire Split Screen */}
                 <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-6 mt-4 pt-4 border-t border-border">
                   {/* Left Sidebar */}
-                  <aside className="space-y-4">
+                  <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-2">Functions</div>
                       <ul className="space-y-1">
