@@ -149,11 +149,9 @@ export default function AssessmentsPage() {
       title="Assessments History"
       description="Compare previous assessments and track organizational maturity improvement over time."
       actions={
-        userRole === "Admin" ? (
-          <Button asChild>
-            <Link to="/assessments/new"><Plus className="h-4 w-4 mr-1" /> Create assessment</Link>
-          </Button>
-        ) : undefined
+        <Button asChild>
+          <Link to="/assessments/new">New assessment</Link>
+        </Button>
       }
     >
       <div className="rounded-2xl border border-border bg-card shadow-sm">
