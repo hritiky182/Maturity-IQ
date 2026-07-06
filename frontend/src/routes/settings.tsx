@@ -172,7 +172,7 @@ export default function SettingsPage() {
                       <span className="text-sm font-semibold text-foreground">{r.l}</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted">
-                      <div className={cn("h-full rounded-full", r.c)} style={{ width: `${(r.to / 5) * 100}%`, marginLeft: `${(r.from / 5) * 100}%` }} />
+                      <div className={cn("h-full rounded-full", r.c)} style={{ width: `${((r.to - r.from) / 5) * 100}%`, marginLeft: `${(r.from / 5) * 100}%` }} />
                     </div>
                     <Input defaultValue={r.from} type="number" step="0.1" className="h-8 text-xs font-semibold" />
                     <Input defaultValue={r.to} type="number" step="0.1" className="h-8 text-xs font-semibold" />

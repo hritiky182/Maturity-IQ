@@ -22,7 +22,7 @@ import {
   Line,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { getAssessmentDepartments, departmentScore } from "@/lib/scoring";
+import { getAssessmentDepartments, departmentScore, maturityLevel } from "@/lib/scoring";
 
 const COLORS = ["#EF4444", "#F59E0B", "#3B82F6", "#8B5CF6", "#10B981"]; // Initial to Optimized colors
 
