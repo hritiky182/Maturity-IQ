@@ -9,6 +9,14 @@ export default function RootLayout() {
   const navigate = useNavigate();
   const pathname = location.pathname;
 
+  // Programmatically trigger a seed data reset once to ensure Emaar Properties has completed assessments for the client demo.
+  useEffect(() => {
+    if (!localStorage.getItem("demo-seeded-v3")) {
+      useStore.getState().resetAllData();
+      localStorage.setItem("demo-seeded-v3", "true");
+    }
+  }, []);
+
   const currentUser = useStore((state) => state.currentUser);
   const isLoggedIn = currentUser !== null || localStorage.getItem("isLoggedIn") === "true";
   const userRole = currentUser?.role || localStorage.getItem("userRole");

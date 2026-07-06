@@ -274,13 +274,22 @@ export const MOCK_ORGANIZATIONS: Organization[] = Array.from({ length: 50 }, (_,
 
 // Seed 40 initial assessments across templates
 export const MOCK_ASSESSMENTS: Assessment[] = Array.from({ length: 40 }, (_, i) => {
-  const org = MOCK_ORGANIZATIONS[i % MOCK_ORGANIZATIONS.length];
+  // First 4 assessments represent Emaar Properties' historical progression (2023 - 2026)
+  const isEmaarPropertiesDemo = i < 4;
+  const org = isEmaarPropertiesDemo 
+    ? MOCK_ORGANIZATIONS[0] 
+    : MOCK_ORGANIZATIONS[(i - 3) % MOCK_ORGANIZATIONS.length];
+
   const years = [2023, 2024, 2025, 2026];
-  const year = years[i % years.length];
+  const year = isEmaarPropertiesDemo ? years[i] : years[i % years.length];
+  
   const statuses: Assessment["status"][] = ["Draft", "In Progress", "Completed", "Submitted"];
-  const status = statuses[i % statuses.length];
+  const status = isEmaarPropertiesDemo ? "Completed" : statuses[i % statuses.length];
   const completion = status === "Completed" || status === "Submitted" ? 100 : status === "Draft" ? 5 + (i * 7) % 25 : 30 + (i * 11) % 60;
-  const overall = 2.1 + ((i * 0.13) % 2.7);
+  
+  const overall = isEmaarPropertiesDemo 
+    ? 2.3 + i * 0.5 
+    : 2.1 + ((i * 0.13) % 2.7);
   
   // Map org industry to template ID
   let templateId = "general";
