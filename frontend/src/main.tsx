@@ -30,7 +30,7 @@ import "./styles.css";
 
 // Initialize theme from storage
 if (localStorage.getItem("theme") === null) {
-  localStorage.setItem("theme", "light");
+  localStorage.setItem("theme", "dark");
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

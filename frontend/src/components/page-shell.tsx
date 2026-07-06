@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function PageShell({ title, description, actions, children }: Props) {
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
   const currentUser = useStore((state) => state.currentUser);
   const organizations = useStore((state) => state.organizations);
   const userRole = localStorage.getItem("userRole") || currentUser?.role;
