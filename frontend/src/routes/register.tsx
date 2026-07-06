@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ export default function RegisterPage() {
   const questions = useStore((state) => state.questions);
 
   // local wizard state
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeFuncId, setActiveFuncId] = useState<string>("");
   const [activeSecIdx, setActiveSecIdx] = useState<number>(0);
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -96,6 +97,13 @@ export default function RegisterPage() {
       setPhone(onboarding.orgInfo.phone);
     }
   }, []);
+
+  // Scroll container to top on navigation changes to keep focus on first question/element
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [onboarding.step, activeFuncId, activeSecIdx]);
 
   // Map industry string to template ID
   const getTemplateIdForIndustry = (ind: string) => {
@@ -432,10 +440,13 @@ export default function RegisterPage() {
           )}
         </div>
 
-        <div className={cn(
-          "flex-1 p-8 overflow-y-auto mx-auto w-full transition-all duration-300",
-          onboarding.step === 3 ? "max-w-6xl" : "max-w-4xl"
-        )}>
+        <div
+          ref={scrollContainerRef}
+          className={cn(
+            "flex-1 p-8 overflow-y-auto mx-auto w-full transition-all duration-300",
+            onboarding.step === 3 ? "max-w-6xl" : "max-w-4xl"
+          )}
+        >
           <div className="bg-card border border-border rounded-2xl shadow-sm p-8">
 
             {/* STEP 1: ACCOUNT INFORMATION */}
